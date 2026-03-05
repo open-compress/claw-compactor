@@ -56,7 +56,7 @@ class TestCommandMap:
 
     def test_all_commands_have_handlers(self):
         expected = {"compress", "estimate", "dedup", "tiers", "audit",
-                    "observe", "dict", "optimize", "full", "benchmark", "install", "auto"}
+                    "observe", "dict", "optimize", "full", "benchmark", "install", "auto", "engram"}
         assert set(COMMAND_MAP.keys()) == expected
 
     def test_handlers_are_callable(self):
