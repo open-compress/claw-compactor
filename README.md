@@ -44,7 +44,7 @@ python3 scripts/mem_compress.py /path/to/workspace full
 **Requirements:** Python 3.9+. No mandatory dependencies.  
 Optional: `pip install tiktoken` for exact token counts (falls back to CJK-aware heuristic).
 
-For Engram (Layer 6): set `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`.
+For Engram (Layer 6): configure `engram.yaml` (or set `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` env vars).
 
 ---
 
@@ -236,17 +236,110 @@ python3 scripts/mem_compress.py /workspace engram status
 python3 scripts/mem_compress.py /workspace engram observe --thread my-thread
 ```
 
-### Engram Configuration
+### Engram Auto-Mode (Multi-Channel, Concurrent)
 
-**Environment variables:**
+The recommended way to run Engram in production is via the **auto-mode scripts**, which
+automatically detect all active threads, process them concurrently, and apply observe/reflect
+based on threshold triggers.
+
+```bash
+# Single run — auto-detects all threads in workspace
+python3 scripts/engram_auto.py --workspace ~/.openclaw/workspace
+
+# Via shell wrapper (same, with logging)
+bash scripts/engram-auto.sh
+
+# CLI equivalents
+python3 scripts/engram_cli.py <workspace> auto --config engram.yaml
+python3 scripts/engram_cli.py <workspace> status --thread openclaw-main
+python3 scripts/engram_cli.py <workspace> observe --thread openclaw-main
+python3 scripts/engram_cli.py <workspace> reflect --thread openclaw-main
+```
+
+**Auto-detected thread sources:**
+- Discord channels: `#general`, `#open-compress`, `#aimm`, and others
+- OpenClaw internals: `cron`, `subagent`, `openclaw-main`
+- Any JSONL session files found in `sessions.scan_dir`
+
+**Concurrency:** Uses `ThreadPoolExecutor` with 4 workers (configurable via `concurrency.max_workers`
+in `engram.yaml`) for parallel thread processing.
+
+**Retry mechanism:** All LLM HTTP calls use automatic exponential-backoff retry:
+- Retries on: `429`, `500`, `502`, `503`, `504`
+- Delays: `2s → 4s → 8s` (max 3 attempts)
+- No retry on: `400`, `401`, `403` (configuration errors — fail fast)
+
+### Engram Configuration (`engram.yaml`)
+
+The preferred way to configure Engram is via `engram.yaml` in the project root:
+
+```yaml
+llm:
+  provider: openai-compatible        # "anthropic" or "openai-compatible"
+  base_url: http://localhost:8403    # endpoint for openai-compatible provider
+  api_key_env: OPENAI_API_KEY        # env var holding the API key
+  model: claude-code/sonnet          # model identifier
+  max_tokens: 4096                   # max output tokens per LLM call
+
+threads:
+  default:
+    observer_threshold: 30000        # pending-message tokens before Observer fires
+    reflector_threshold: 40000       # observation tokens before Reflector fires
+
+  # Optional per-thread overrides:
+  # discord-general:
+  #   observer_threshold: 20000
+
+sessions:
+  scan_dir: ~/.openclaw/agents/main/sessions   # where to find session JSONL files
+  max_age_hours: 48                            # ignore sessions older than this
+
+storage:
+  base_dir: ~/.openclaw/workspace/memory/engram  # Engram memory root
+
+concurrency:
+  max_workers: 4                     # parallel thread workers
+
+logging:
+  level: INFO
+```
+
+**Environment variables (alternative to `engram.yaml`):**
 ```bash
 ANTHROPIC_API_KEY=sk-ant-...        # Preferred LLM provider (Anthropic)
-OPENAI_API_KEY=sk-...               # Fallback LLM provider (OpenAI-compatible)
-OPENAI_BASE_URL=https://...         # Custom OpenAI-compatible endpoint
+OPENAI_API_KEY=sk-...               # OpenAI-compatible API key
+OPENAI_BASE_URL=https://...         # Custom endpoint (local LLM, etc.)
 OM_OBSERVER_THRESHOLD=30000         # Tokens before auto-observe (default: 30000)
 OM_REFLECTOR_THRESHOLD=40000        # Tokens before auto-reflect (default: 40000)
 OM_MODEL=claude-opus-4-5            # Override LLM model
 ```
+
+### Threshold Tuning Guide
+
+Thresholds control how often Observer/Reflector fire. Lower = more frequent (fresher memory,
+higher LLM cost). Higher = less frequent (lower cost, slightly stale context).
+
+**Real-world channel token production (measured):**
+
+| Channel | Daily Tokens | Observer @30K | Observer @10K |
+|---------|-------------|---------------|---------------|
+| #aimm | ~149K | ~5×/day | ~15×/day |
+| openclaw-main | ~138K | ~4.5×/day | ~14×/day |
+| #open-compress | ~68K | ~2.3×/day | ~7×/day |
+| #general | ~62K | ~2×/day | ~6×/day |
+| subagent | ~43K | ~1.4×/day | ~4×/day |
+| cron | ~9K | ~0.3×/day | ~1×/day |
+| **Total** | **~470K/day** | **~16×/day** | **~47×/day** |
+
+**LLM cost at different thresholds** (each Observer call ≈ 2K output tokens, Sonnet):
+
+| Threshold | Observer Calls/Day | Est. Output Tokens/Day |
+|-----------|-------------------|------------------------|
+| 30K (default) | ~16 | ~32K |
+| 10K | ~47 | ~94K |
+
+**Recommendation:** Start at `observer_threshold: 30000`. Tune down if context feels stale;
+tune up to reduce LLM spend. Reflector threshold can stay at `40000` (fires less often).
 
 **Python API:**
 ```python
@@ -254,7 +347,7 @@ from scripts.lib.engram import EngramEngine
 
 engine = EngramEngine(
     workspace_path="/path/to/workspace",
-    observer_threshold=30_000,       # tune lower for faster compression
+    observer_threshold=30_000,       # tune lower for fresher context
     reflector_threshold=40_000,
     anthropic_api_key="sk-ant-...",  # or set env var
     model="claude-opus-4-5",         # optional model override
@@ -323,6 +416,23 @@ Real-world compression results on OpenClaw agent workspaces:
 | Long-running agent memory | Engram (Layer 6) | **3–6×** |
 
 **Combined effect:** 50% token reduction + prompt caching (90% cost discount) = **~95% effective cost reduction** on repeated context.
+
+### Engram vs. Other Strategies (Benchmark)
+
+Averaged across 5 conversation samples (DevOps, trading, ML, mixed-long, sysadmin):
+
+| Strategy | Ratio | Token Savings | ROUGE-L | IR-F1 | Latency | LLM Calls |
+|----------|-------|--------------|---------|-------|---------|-----------|
+| **Engram (L6)** | 0.125 | **87.5%** | 0.038 | 0.414 | ~35s | 2 |
+| RandomDrop | 0.785 | 21.5% | 0.852 | 0.911 | ~0ms | 0 |
+| RuleCompressor (L1–5) | 0.910 | 9.0% | 0.923 | 0.958 | ~6ms | 0 |
+| NoCompression | 1.000 | 0% | 1.000 | 1.000 | ~0ms | 0 |
+
+**Key insights:**
+- **Engram ROUGE-L is low** because it *semantically restructures* rather than copying verbatim — it preserves intent, not wording
+- **RuleCompressor (L1–5)** is best for instant prompt compression (zero latency, zero LLM cost)
+- **Engram** is best for long-term memory compression (87.5% space savings, meaning you keep 8× more history in the same token budget)
+- Full per-sample results → [`benchmark/RESULTS.md`](benchmark/RESULTS.md)
 
 ---
 

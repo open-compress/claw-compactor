@@ -113,12 +113,54 @@ Engram is the flagship layer. It operates as a live engine alongside conversatio
 automatically compressing messages into structured, priority-annotated knowledge.
 
 ### Prerequisites
+
+Configure via `engram.yaml` (recommended) or environment variables:
+
+```yaml
+# engram.yaml — place in claw-compactor root
+llm:
+  provider: openai-compatible
+  base_url: http://localhost:8403
+  model: claude-code/sonnet
+  max_tokens: 4096
+
+threads:
+  default:
+    observer_threshold: 30000    # pending tokens before Observer fires
+    reflector_threshold: 40000   # observation tokens before Reflector fires
+
+concurrency:
+  max_workers: 4                 # parallel thread workers
+```
+
 ```bash
+# Alternative: environment variables
 export ANTHROPIC_API_KEY=sk-ant-...   # Preferred
 # or
 export OPENAI_API_KEY=sk-...          # OpenAI-compatible fallback
 export OPENAI_BASE_URL=https://...    # Optional: custom endpoint (local LLM, etc.)
 ```
+
+### Engram Auto-Mode (Recommended for Production)
+
+Auto-detects all active threads and processes them concurrently (4 workers):
+
+```bash
+# Single run — auto-detects all threads
+python3 scripts/engram_auto.py --workspace ~/.openclaw/workspace
+
+# Via shell wrapper
+bash scripts/engram-auto.sh
+
+# Via CLI
+python3 scripts/engram_cli.py <workspace> auto --config engram.yaml
+python3 scripts/engram_cli.py <workspace> status --thread openclaw-main
+python3 scripts/engram_cli.py <workspace> observe --thread openclaw-main
+python3 scripts/engram_cli.py <workspace> reflect --thread openclaw-main
+```
+
+**Retry:** LLM calls retry on 429/5xx with exponential backoff (2s→4s→8s, max 3 attempts).
+No retry on 400/401/403 (fail fast on config errors).
 
 ### Engram via Unified Entry Point
 ```bash
@@ -218,6 +260,34 @@ ctx_str = engine.build_system_context("thread-id")
 | `OM_OBSERVER_THRESHOLD` | `30000` | Pending tokens before auto-observe |
 | `OM_REFLECTOR_THRESHOLD` | `40000` | Observation tokens before auto-reflect |
 | `OM_MODEL` | `claude-opus-4-5` | LLM model override |
+
+### Threshold Tuning Quick Reference
+
+Each Observer call ≈ 2K output tokens (Sonnet). Daily volume at default 30K threshold:
+
+| Channel | Daily Tokens | @30K threshold | @10K threshold |
+|---------|-------------|----------------|----------------|
+| #aimm | ~149K | ~5×/day | ~15×/day |
+| openclaw-main | ~138K | ~4.5×/day | ~14×/day |
+| #open-compress | ~68K | ~2.3×/day | ~7×/day |
+| #general | ~62K | ~2×/day | ~6×/day |
+| subagent | ~43K | ~1.4×/day | ~4×/day |
+| cron | ~9K | ~0.3×/day | ~1×/day |
+| **Total** | **~470K/day** | **~16×/day (~32K output tokens)** | **~47×/day (~94K output tokens)** |
+
+Start at `observer_threshold: 30000`. Tune down for fresher context; tune up to reduce cost.
+
+### Engram Benchmark Summary
+
+| Strategy | Token Savings | ROUGE-L | IR-F1 | Latency | LLM Calls |
+|----------|--------------|---------|-------|---------|-----------|
+| **Engram (L6)** | **87.5%** | 0.038 | 0.414 | ~35s | 2 |
+| RuleCompressor (L1–5) | 9.0% | 0.923 | 0.958 | ~6ms | 0 |
+| RandomDrop | 21.5% | 0.852 | 0.911 | ~0ms | 0 |
+
+- Engram low ROUGE-L = semantic restructuring, not verbatim copy — intent is preserved
+- Use RuleCompressor for instant prompt compression; Engram for long-term memory
+- Full results → `benchmark/RESULTS.md`
 
 ### Observation Format
 
