@@ -204,8 +204,12 @@ def cmd_auto(engine: EngramEngine, args: argparse.Namespace) -> int:
 
     Delegates to engram_auto.EngramAutoRunner using the config from engram.yaml.
     The *engine* argument is unused here (auto-runner builds its own per-thread engines).
+
+    Phase 1 additions:
+      --max-sessions N       Cap sessions processed per run (default 20).
+      --max-run-seconds S    Soft deadline in seconds (default 120).
     """
-    from engram_auto import EngramAutoRunner
+    from engram_auto import EngramAutoRunner, DEFAULT_MAX_SESSIONS_PER_RUN, DEFAULT_MAX_RUN_SECONDS
     from lib.config import load_engram_config
 
     cfg_path = getattr(args, "config", None)
@@ -215,10 +219,15 @@ def cmd_auto(engine: EngramEngine, args: argparse.Namespace) -> int:
 
     workspace = Path(args.workspace)
 
+    max_sessions = getattr(args, "max_sessions", DEFAULT_MAX_SESSIONS_PER_RUN)
+    max_run_seconds = getattr(args, "max_run_seconds", DEFAULT_MAX_RUN_SECONDS)
+
     runner = EngramAutoRunner(
         workspace=workspace,
         engram_cfg=engram_cfg,
         dry_run=getattr(args, "dry_run", False),
+        max_sessions_per_run=max_sessions,
+        max_run_seconds=max_run_seconds,
     )
 
     if getattr(args, "daemon", False):
@@ -420,6 +429,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_daemon.add_argument("--quiet", action="store_true")
 
     # --- auto subcommand ---
+    from engram_auto import DEFAULT_MAX_SESSIONS_PER_RUN, DEFAULT_MAX_RUN_SECONDS
     p_auto = sub.add_parser(
         "auto",
         help="Multi-channel auto-runner (reads engram.yaml, processes sessions concurrently)",
@@ -435,6 +445,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_auto.add_argument(
         "--dry-run", action="store_true", dest="dry_run",
         help="Detect channels and convert but do not ingest",
+    )
+    p_auto.add_argument(
+        "--max-sessions", type=int, default=DEFAULT_MAX_SESSIONS_PER_RUN,
+        dest="max_sessions",
+        help=f"Max sessions to process per run (default: {DEFAULT_MAX_SESSIONS_PER_RUN})",
+    )
+    p_auto.add_argument(
+        "--max-run-seconds", type=int, default=DEFAULT_MAX_RUN_SECONDS,
+        dest="max_run_seconds",
+        help=f"Soft deadline in seconds for a single run (default: {DEFAULT_MAX_RUN_SECONDS})",
     )
 
     return parser

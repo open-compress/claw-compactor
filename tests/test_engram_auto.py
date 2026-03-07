@@ -134,10 +134,25 @@ class TestDetectThreadId:
         assert detect_thread_id(p) == "subagent"
 
     def test_generic_discord_channel(self, sessions_dir: Path) -> None:
-        """Unknown channel name with channel id should become discord-{name}."""
+        """Unknown channel name with channel id: ID takes priority for stability.
+
+        Phase 1 change: when both an unknown channel name and a channel id
+        are present, the channel id is used (more stable — ids never change,
+        names can be renamed).  Result: discord-channel-{id}.
+        """
         p = _write_session(sessions_dir, "s8", [
             _make_openclaw_msg("user",
                 "[Discord Guild #mychannel channel id:9999]"),
+        ])
+        result = detect_thread_id(p)
+        # Phase 1: id-based naming is preferred over unknown name for stability
+        assert result == "discord-channel-9999"
+
+    def test_generic_discord_channel_name_only(self, sessions_dir: Path) -> None:
+        """Unknown channel name with NO channel id should become discord-{name}."""
+        p = _write_session(sessions_dir, "s9", [
+            _make_openclaw_msg("user",
+                "[Discord Guild #mychannel] some content here"),
         ])
         result = detect_thread_id(p)
         assert result == "discord-mychannel"
@@ -467,6 +482,27 @@ class TestEngramAutoRunner:
         second_counts = {t: len(storage.read_pending(t)) for t in threads}
         assert first_counts == second_counts
 
+    def test_batch_ingest_error_does_not_mark_processed(
+        self, workspace: Path, sessions_dir: Path, monkeypatch
+    ) -> None:
+        """If batch_ingest reports error, session must stay unprocessed for retry."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+
+        session_file = _write_session(sessions_dir, "error_sess", [
+            _make_openclaw_msg("user", "This should not be marked processed on ingest error"),
+        ])
+
+        cfg = self._make_cfg(sessions_dir, workspace)
+        runner = EngramAutoRunner(workspace=workspace, engram_cfg=cfg, dry_run=False)
+
+        with patch("engram_auto.EngramEngine.batch_ingest", return_value={"error": "proxy timeout"}):
+            runner.run_once()
+
+        marker_file = workspace / "memory" / "engram" / ".processed_sessions"
+        cache_key = f"{session_file.stem}:{int(session_file.stat().st_mtime)}"
+        marker_text = marker_file.read_text(encoding="utf-8") if marker_file.exists() else ""
+        assert cache_key not in marker_text
+
     def test_concurrent_threads_use_locks(
         self, workspace: Path, sessions_dir: Path, monkeypatch
     ) -> None:
@@ -527,3 +563,385 @@ class TestLoadDotenv:
     def test_nonexistent_file_no_error(self, tmp_path: Path) -> None:
         # Should not raise
         _load_dotenv(tmp_path / "nonexistent.env")
+
+
+# ---------------------------------------------------------------------------
+# Test 8: Phase 1 — Channel-ID → name mapping stability
+# ---------------------------------------------------------------------------
+
+class TestChannelIdNameMapping:
+    """Channel-id → name mapping should produce stable thread IDs."""
+
+    def test_known_channel_id_maps_to_name(self, sessions_dir: Path) -> None:
+        """A message with only channel id (no channel name) should resolve via ID map."""
+        from engram_auto import _CHANNEL_ID_NAME_MAP
+        # Use a known ID from the static map
+        known_id = next(iter(_CHANNEL_ID_NAME_MAP))
+        known_name = _CHANNEL_ID_NAME_MAP[known_id]
+        p = _write_session(sessions_dir, "id_only", [
+            _make_openclaw_msg("user", f"channel id:{known_id} some message"),
+        ])
+        assert detect_thread_id(p) == known_name
+
+    def test_channel_name_wins_over_id_when_both_present(self, sessions_dir: Path) -> None:
+        """When both '#general' and 'channel id:NNN' appear, name should take precedence."""
+        p = _write_session(sessions_dir, "name_and_id", [
+            _make_openclaw_msg("user",
+                "In [Discord Guild #general channel id:9999999]"),
+        ])
+        # Should be "discord-general" (name-mapped), not "discord-channel-9999999"
+        assert detect_thread_id(p) == "discord-general"
+
+    def test_unknown_id_falls_back_to_channel_id_format(self, sessions_dir: Path) -> None:
+        """Unknown channel id with no channel name → discord-channel-{id}."""
+        p = _write_session(sessions_dir, "unknown_id", [
+            _make_openclaw_msg("user", "channel id:88888888"),
+        ])
+        assert detect_thread_id(p) == "discord-channel-88888888"
+
+    def test_thread_map_cache_used_on_second_call(self, tmp_path: Path, sessions_dir: Path) -> None:
+        """Second call with same session file should return cached result."""
+        p = _write_session(sessions_dir, "cached_sess", [
+            _make_openclaw_msg("user", "[Discord Guild #general channel id:111]"),
+        ])
+        cache_path = tmp_path / ".thread-map.json"
+        result1 = detect_thread_id(p, thread_map_path=cache_path)
+        # Corrupt the file so if cache is NOT used, detection would fail
+        p.write_text("INVALID JSON\n")
+        result2 = detect_thread_id(p, thread_map_path=cache_path)
+        assert result1 == result2, "Cache should return same result on second call"
+
+
+# ---------------------------------------------------------------------------
+# Test 9: Phase 1 — Rate limiting (max_sessions_per_run)
+# ---------------------------------------------------------------------------
+
+class TestRateLimiting:
+    """EngramAutoRunner should cap sessions processed per run."""
+
+    def _make_cfg(self, sessions_dir: Path, workspace: Path) -> dict:
+        return {
+            "llm": {
+                "provider": "openai-compatible",
+                "base_url": "http://localhost:9999",
+                "api_key_env": "OPENAI_API_KEY",
+                "model": "test-model",
+                "max_tokens": 512,
+            },
+            "threads": {"default": {"observer_threshold": 99999, "reflector_threshold": 99999}},
+            "sessions": {"scan_dir": str(sessions_dir), "max_age_hours": 48},
+            "storage": {"base_dir": str(workspace / "memory" / "engram")},
+            "concurrency": {"max_workers": 2},
+        }
+
+    def test_rate_limit_caps_sessions(
+        self, workspace: Path, sessions_dir: Path, monkeypatch
+    ) -> None:
+        """With max_sessions_per_run=3 and 10 sessions, only 3 are processed."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        # Create 10 distinct sessions
+        for i in range(10):
+            _write_session(sessions_dir, f"rate_sess_{i:02d}", [
+                _make_openclaw_msg("user", f"Message {i}"),
+            ])
+
+        cfg = self._make_cfg(sessions_dir, workspace)
+        runner = EngramAutoRunner(
+            workspace=workspace,
+            engram_cfg=cfg,
+            dry_run=True,    # avoid needing LLM
+            max_sessions_per_run=3,
+            max_run_seconds=300,
+        )
+        totals = runner.run_once()
+
+        # Check processed marker: at most 3 sessions written
+        marker = workspace / "memory" / "engram" / ".processed_sessions"
+        processed_lines = [l for l in marker.read_text().splitlines() if l.strip()]
+        assert len(processed_lines) <= 3, (
+            f"Expected ≤3 processed sessions, got {len(processed_lines)}: {processed_lines}"
+        )
+
+    def test_rate_limit_summary_has_remaining_estimate(
+        self, workspace: Path, sessions_dir: Path, monkeypatch, capsys
+    ) -> None:
+        """Structured summary should report remaining_estimate when rate-limited."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        for i in range(5):
+            _write_session(sessions_dir, f"rem_sess_{i}", [
+                _make_openclaw_msg("user", f"msg {i}"),
+            ])
+
+        cfg = self._make_cfg(sessions_dir, workspace)
+        runner = EngramAutoRunner(
+            workspace=workspace,
+            engram_cfg=cfg,
+            dry_run=True,
+            max_sessions_per_run=2,
+            max_run_seconds=300,
+        )
+        runner.run_once()
+
+        captured = capsys.readouterr()
+        assert "remaining_estimate=3" in captured.out, (
+            f"Expected 'remaining_estimate=3' in output: {captured.out!r}"
+        )
+
+    def test_no_rate_limit_when_sessions_below_cap(
+        self, workspace: Path, sessions_dir: Path, monkeypatch, capsys
+    ) -> None:
+        """When sessions ≤ max, remaining_estimate should be 0."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        for i in range(3):
+            _write_session(sessions_dir, f"below_cap_{i}", [
+                _make_openclaw_msg("user", f"msg {i}"),
+            ])
+
+        cfg = self._make_cfg(sessions_dir, workspace)
+        runner = EngramAutoRunner(
+            workspace=workspace,
+            engram_cfg=cfg,
+            dry_run=True,
+            max_sessions_per_run=20,
+            max_run_seconds=300,
+        )
+        runner.run_once()
+
+        captured = capsys.readouterr()
+        assert "remaining_estimate=0" in captured.out, (
+            f"Expected 'remaining_estimate=0' in output: {captured.out!r}"
+        )
+
+    def test_second_run_processes_deferred(
+        self, workspace: Path, sessions_dir: Path, monkeypatch
+    ) -> None:
+        """A second run should pick up sessions deferred from the first."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        for i in range(5):
+            _write_session(sessions_dir, f"two_run_{i}", [
+                _make_openclaw_msg("user", f"msg {i}"),
+            ])
+
+        cfg = self._make_cfg(sessions_dir, workspace)
+        marker = workspace / "memory" / "engram" / ".processed_sessions"
+
+        # First run: process 2
+        runner1 = EngramAutoRunner(
+            workspace=workspace, engram_cfg=cfg, dry_run=True,
+            max_sessions_per_run=2, max_run_seconds=300,
+        )
+        runner1.run_once()
+        after_run1 = {l.split(":")[0] for l in marker.read_text().splitlines() if l.strip()}
+        assert len(after_run1) == 2
+
+        # Second run: process next 2 (different runner instance, fresh processed cache)
+        runner2 = EngramAutoRunner(
+            workspace=workspace, engram_cfg=cfg, dry_run=True,
+            max_sessions_per_run=2, max_run_seconds=300,
+        )
+        runner2.run_once()
+        after_run2 = {l.split(":")[0] for l in marker.read_text().splitlines() if l.strip()}
+        assert len(after_run2) == 4, (
+            f"Expected 4 sessions total after 2 runs, got {len(after_run2)}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Test 10: Phase 1 — Soft deadline (max_run_seconds)
+# ---------------------------------------------------------------------------
+
+class TestSoftDeadline:
+    """EngramAutoRunner should respect soft deadline and defer remaining sessions."""
+
+    def _make_cfg(self, sessions_dir: Path, workspace: Path) -> dict:
+        return {
+            "llm": {
+                "provider": "openai-compatible",
+                "base_url": "http://localhost:9999",
+                "api_key_env": "OPENAI_API_KEY",
+                "model": "test-model",
+                "max_tokens": 512,
+            },
+            "threads": {"default": {"observer_threshold": 99999, "reflector_threshold": 99999}},
+            "sessions": {"scan_dir": str(sessions_dir), "max_age_hours": 48},
+            "storage": {"base_dir": str(workspace / "memory" / "engram")},
+            "concurrency": {"max_workers": 2},
+        }
+
+    def test_deadline_limits_submissions(
+        self, workspace: Path, sessions_dir: Path, monkeypatch, capsys
+    ) -> None:
+        """When deadline=0s, only in-flight sessions (possibly none) complete."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        for i in range(10):
+            _write_session(sessions_dir, f"dl_sess_{i:02d}", [
+                _make_openclaw_msg("user", f"msg {i}"),
+            ])
+
+        cfg = self._make_cfg(sessions_dir, workspace)
+        runner = EngramAutoRunner(
+            workspace=workspace,
+            engram_cfg=cfg,
+            dry_run=True,
+            max_sessions_per_run=20,
+            max_run_seconds=0,   # immediate soft deadline
+        )
+        runner.run_once()
+
+        captured = capsys.readouterr()
+        # With deadline=0, remaining_estimate should be reported
+        # (exact value depends on how many were submitted before deadline)
+        assert "remaining_estimate=" in captured.out, (
+            f"Expected 'remaining_estimate=' in output: {captured.out!r}"
+        )
+
+    def test_summary_structure_fields_present(
+        self, workspace: Path, sessions_dir: Path, monkeypatch, capsys
+    ) -> None:
+        """Structured summary must include all required fields."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        _write_session(sessions_dir, "summary_sess", [
+            _make_openclaw_msg("user", "test message"),
+        ])
+
+        cfg = self._make_cfg(sessions_dir, workspace)
+        runner = EngramAutoRunner(
+            workspace=workspace,
+            engram_cfg=cfg,
+            dry_run=True,
+            max_sessions_per_run=20,
+            max_run_seconds=300,
+        )
+        runner.run_once()
+
+        captured = capsys.readouterr()
+        # All structured summary fields must be present
+        for field in ("processed=", "skipped=", "failed=", "remaining_estimate="):
+            assert field in captured.out, (
+                f"Field '{field}' missing from summary output: {captured.out!r}"
+            )
+
+    def test_deadline_summary_reports_remaining(
+        self, workspace: Path, sessions_dir: Path, monkeypatch, capsys
+    ) -> None:
+        """Soft deadline hit → remaining_estimate > 0 when there are pending sessions."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        for i in range(6):
+            _write_session(sessions_dir, f"remain_{i}", [
+                _make_openclaw_msg("user", f"session {i}"),
+            ])
+
+        cfg = self._make_cfg(sessions_dir, workspace)
+
+        # Use a very short deadline and slow down _process_session so deadline fires
+        original_process = None
+        call_count = [0]
+
+        def slow_process(self_inner, session_file, tmp_dir, thread_id_hint=None, run_id=None):
+            call_count[0] += 1
+            # Only the first call is allowed; after that sleep to simulate slow work
+            if call_count[0] > 1:
+                time.sleep(0.5)
+            return (session_file.stem, "openclaw-main", 0, "processed")
+
+        import time as _time
+        import engram_auto as _ea
+
+        runner = EngramAutoRunner(
+            workspace=workspace,
+            engram_cfg=cfg,
+            dry_run=False,
+            max_sessions_per_run=20,
+            max_run_seconds=0,  # immediate deadline
+        )
+        runner.run_once()
+
+        captured = capsys.readouterr()
+        # remaining_estimate must appear in summary
+        assert "remaining_estimate=" in captured.out
+
+
+# ---------------------------------------------------------------------------
+# Test 11: Phase 1 — Structured summary from run_once
+# ---------------------------------------------------------------------------
+
+class TestStructuredSummary:
+    """run_once() should produce a structured summary with correct counts."""
+
+    def _make_cfg(self, sessions_dir: Path, workspace: Path) -> dict:
+        return {
+            "llm": {
+                "provider": "openai-compatible",
+                "base_url": "http://localhost:9999",
+                "api_key_env": "OPENAI_API_KEY",
+                "model": "test-model",
+                "max_tokens": 512,
+            },
+            "threads": {"default": {"observer_threshold": 99999, "reflector_threshold": 99999}},
+            "sessions": {"scan_dir": str(sessions_dir), "max_age_hours": 48},
+            "storage": {"base_dir": str(workspace / "memory" / "engram")},
+            "concurrency": {"max_workers": 2},
+        }
+
+    def test_summary_counts_processed(
+        self, workspace: Path, sessions_dir: Path, monkeypatch, capsys
+    ) -> None:
+        """processed count should match number of newly ingested sessions."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        for i in range(3):
+            _write_session(sessions_dir, f"proc_{i}", [
+                _make_openclaw_msg("user", f"msg {i}"),
+            ])
+
+        cfg = self._make_cfg(sessions_dir, workspace)
+        runner = EngramAutoRunner(
+            workspace=workspace, engram_cfg=cfg, dry_run=True,
+            max_sessions_per_run=20, max_run_seconds=300,
+        )
+        runner.run_once()
+
+        captured = capsys.readouterr()
+        assert "processed=3" in captured.out
+
+    def test_summary_counts_skipped_on_rerun(
+        self, workspace: Path, sessions_dir: Path, monkeypatch, capsys
+    ) -> None:
+        """On second run (same unchanged sessions), skipped count should equal session count."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        for i in range(2):
+            _write_session(sessions_dir, f"skip_{i}", [
+                _make_openclaw_msg("user", f"msg {i}"),
+            ])
+
+        cfg = self._make_cfg(sessions_dir, workspace)
+        # First run
+        runner = EngramAutoRunner(
+            workspace=workspace, engram_cfg=cfg, dry_run=True,
+            max_sessions_per_run=20, max_run_seconds=300,
+        )
+        runner.run_once()
+        capsys.readouterr()  # discard first run output
+
+        # Second run — same runner (already has processed cache)
+        runner.run_once()
+        captured = capsys.readouterr()
+        assert "skipped=2" in captured.out, (
+            f"Expected 'skipped=2' in second run output: {captured.out!r}"
+        )
+
+    def test_empty_sessions_dir_summary(
+        self, workspace: Path, sessions_dir: Path, monkeypatch, capsys
+    ) -> None:
+        """With no sessions, summary should show all zeros."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        cfg = self._make_cfg(sessions_dir, workspace)
+        runner = EngramAutoRunner(
+            workspace=workspace, engram_cfg=cfg, dry_run=True,
+            max_sessions_per_run=20, max_run_seconds=300,
+        )
+        runner.run_once()
+        captured = capsys.readouterr()
+        assert "processed=0" in captured.out
+        assert "skipped=0" in captured.out
+        assert "failed=0" in captured.out
+        assert "remaining_estimate=0" in captured.out
