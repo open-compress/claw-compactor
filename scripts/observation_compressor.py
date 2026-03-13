@@ -115,56 +115,112 @@ def parse_session_jsonl(path: Path) -> List[Dict[str, Any]]:
 def extract_tool_interactions(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Extract tool call/result pairs from parsed messages.
 
+    Supports OpenClaw's native JSONL format:
+      - Tool calls:   role="assistant", content block type="toolCall",
+                      fields: name (str), arguments (dict), id (str)
+      - Tool results: role="toolResult" (top-level), fields: toolName, toolCallId,
+                      content=[{type:"text", text:"..."}]
+
+    Also handles legacy OpenAI-style tool_calls arrays for compatibility.
+
     Returns list of interaction dicts with tool_name, input_summary, output_summary.
     """
     interactions: List[Dict[str, Any]] = []
+    # Index pending interactions by tool call id for result matching
+    pending: Dict[str, Dict[str, Any]] = {}
 
     for msg in messages:
         content = msg.get("content", "")
         role = msg.get("role", "")
 
+        # --- OpenClaw native: assistant message with toolCall content blocks ---
         if role == "assistant" and isinstance(content, list):
-            for block in content:
-                if isinstance(block, dict) and block.get("type") == "toolCall":
-                    interaction = {
-                        "tool_name": block.get("toolName", "unknown"),
-                        "input_summary": json.dumps(block.get("input", {}))[:200],
-                        "output_summary": "",
-                        "output_size": 0,
-                        "assistant_text": "",
-                    }
-                    # Capture assistant text from the same message
-                    for b2 in content:
-                        if isinstance(b2, dict) and b2.get("type") == "text":
-                            interaction["assistant_text"] = b2.get("text", "")[:200]
-                    interactions.append(interaction)
+            # Grab any assistant text from the same message (thinking narration)
+            assistant_text = ""
+            for b in content:
+                if isinstance(b, dict) and b.get("type") == "text":
+                    assistant_text = b.get("text", "")[:200]
+                    break
 
-        # OpenAI-style tool_calls format
+            for block in content:
+                if not (isinstance(block, dict) and block.get("type") == "toolCall"):
+                    continue
+                tool_name = block.get("name") or block.get("toolName") or "unknown"
+                args = block.get("arguments") or block.get("input") or {}
+                call_id = block.get("id", "")
+                interaction = {
+                    "tool_name": tool_name,
+                    "input_summary": json.dumps(args)[:300] if isinstance(args, dict) else str(args)[:300],
+                    "output_summary": "",
+                    "output_size": 0,
+                    "assistant_text": assistant_text,
+                }
+                interactions.append(interaction)
+                if call_id:
+                    pending[call_id] = interaction
+
+        # --- OpenClaw native: toolResult message ---
+        elif role == "toolResult":
+            tool_call_id = msg.get("toolCallId", "")
+            # Result text lives in content[0].text
+            result_text = ""
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        result_text = block.get("text", "")
+                        break
+            elif isinstance(content, str):
+                result_text = content
+
+            # Match by toolCallId first, fall back to last pending
+            target = pending.pop(tool_call_id, None)
+            if target is None and interactions:
+                # Fallback: attach to most recent interaction without a result
+                for ix in reversed(interactions):
+                    if not ix["output_summary"]:
+                        target = ix
+                        break
+            if target is not None and not target["output_summary"]:
+                target["output_summary"] = result_text[:500]
+                target["output_size"] = len(result_text)
+
+        # --- Legacy OpenAI-style tool_calls array ---
         elif role == "assistant" and "tool_calls" in msg:
             for tc in msg["tool_calls"]:
                 func = tc.get("function", {})
                 interaction = {
                     "tool_name": func.get("name", "unknown"),
-                    "input_summary": func.get("arguments", "")[:200],
+                    "input_summary": func.get("arguments", "")[:300],
                     "output_summary": "",
                     "output_size": 0,
                     "assistant_text": content[:200] if isinstance(content, str) else "",
                 }
                 interactions.append(interaction)
+                call_id = tc.get("id", "")
+                if call_id:
+                    pending[call_id] = interaction
 
-        elif role == "tool" and isinstance(content, list):
-            for block in content:
-                if isinstance(block, dict) and block.get("type") == "toolResult":
-                    result_text = str(block.get("result", ""))
-                    # Attach to the last interaction if available
-                    if interactions and not interactions[-1]["output_summary"]:
-                        interactions[-1]["output_summary"] = result_text[:500]
-                        interactions[-1]["output_size"] = len(result_text)
+        # --- Legacy OpenAI-style role=tool result ---
+        elif role == "tool":
+            tool_call_id = msg.get("tool_call_id", "")
+            result_text = ""
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict):
+                        result_text = str(block.get("result") or block.get("text") or "")
+                        break
+            elif isinstance(content, str):
+                result_text = content
 
-        elif role == "tool" and isinstance(content, str):
-            if interactions and not interactions[-1]["output_summary"]:
-                interactions[-1]["output_summary"] = content[:500]
-                interactions[-1]["output_size"] = len(content)
+            target = pending.pop(tool_call_id, None)
+            if target is None and interactions:
+                for ix in reversed(interactions):
+                    if not ix["output_summary"]:
+                        target = ix
+                        break
+            if target is not None and not target["output_summary"]:
+                target["output_summary"] = result_text[:500]
+                target["output_size"] = len(result_text)
 
     return interactions
 
