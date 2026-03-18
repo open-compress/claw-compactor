@@ -20,13 +20,18 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Any
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from lib.dictionary import (
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+_scripts_dir = str(Path(__file__).resolve().parent)
+if _scripts_dir not in sys.path:
+    sys.path.insert(0, _scripts_dir)
+from claw_compactor.dictionary import (
     build_codebook, compress_text, decompress_text,
     save_codebook, load_codebook, compression_stats,
 )
-from lib.tokens import estimate_tokens
-from lib.exceptions import FileNotFoundError_, MemCompressError
+from claw_compactor.tokens import estimate_tokens
+from claw_compactor.exceptions import FileNotFoundError_, MemCompressError
 
 logger = logging.getLogger(__name__)
 

@@ -39,11 +39,16 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 # Ensure scripts/ is on path when run directly
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+_scripts_dir = str(Path(__file__).resolve().parent)
+if _scripts_dir not in sys.path:
+    sys.path.insert(0, _scripts_dir)
 
-from lib.config import load_engram_config, engram_engine_kwargs
-from lib.engram import EngramEngine
-from lib.engram_storage import EngramStorage
+from claw_compactor.config import load_engram_config, engram_engine_kwargs
+from claw_compactor.engram import EngramEngine
+from claw_compactor.engram_storage import EngramStorage
 
 logger = logging.getLogger("engram_auto")
 
@@ -924,7 +929,7 @@ class EngramAutoRunner:
         if totals:
             # Show pending token counts per thread
             storage = EngramStorage(self.workspace)
-            from lib.engram import _count_messages_tokens
+            from claw_compactor.engram import _count_messages_tokens
             print("Thread pending tokens:")
             for tid in sorted(totals.keys()):
                 pending = storage.read_pending(tid)
@@ -949,7 +954,7 @@ class EngramAutoRunner:
 
 def print_status(workspace: Path, engram_cfg: Dict) -> None:
     """Print Engram status for all known threads."""
-    from lib.engram_storage import EngramStorage
+    from claw_compactor.engram_storage import EngramStorage
     storage = EngramStorage(workspace)
     threads = storage.list_threads()
     if not threads:
@@ -957,12 +962,12 @@ def print_status(workspace: Path, engram_cfg: Dict) -> None:
         return
     print(f"{'Thread':<28} {'Pending':>7} {'Obs tok':>8} {'Ref tok':>8} {'Total':>8}")
     print("─" * 65)
-    from lib.tokens import estimate_tokens
+    from claw_compactor.tokens import estimate_tokens
     for tid in threads:
         pending = storage.read_pending(tid)
         obs = storage.read_observations(tid)
         ref = storage.read_reflection(tid)
-        from lib.engram import _count_messages_tokens
+        from claw_compactor.engram import _count_messages_tokens
         pt = _count_messages_tokens(pending)
         ot = estimate_tokens(obs)
         rt = estimate_tokens(ref)

@@ -23,21 +23,21 @@ import pytest
 # Ensure scripts/ is on path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from lib.engram import (
+from claw_compactor.engram import (
     EngramEngine,
     _count_messages_tokens,
     _messages_to_text,
     MAX_OBSERVER_INPUT_TOKENS,
     MAX_REFLECTOR_INPUT_TOKENS,
 )
-from lib.engram_storage import EngramStorage
-from lib.engram_prompts import (
+from claw_compactor.engram_storage import EngramStorage
+from claw_compactor.engram_prompts import (
     OBSERVER_SYSTEM_PROMPT,
     REFLECTOR_SYSTEM_PROMPT,
     OBSERVER_USER_TEMPLATE,
     REFLECTOR_USER_TEMPLATE,
 )
-from lib.tokens import estimate_tokens
+from claw_compactor.tokens import estimate_tokens
 
 
 # ---------------------------------------------------------------------------
@@ -678,7 +678,7 @@ class TestHttpRetry:
     def test_http_retry_on_429(self, workspace: Path) -> None:
         """Should retry on HTTP 429 and eventually succeed."""
         import urllib.error
-        from lib.engram import _http_post
+        from claw_compactor.engram import _http_post
 
         call_count = 0
 
@@ -719,7 +719,7 @@ class TestHttpRetry:
     def test_http_no_retry_on_401(self, workspace: Path) -> None:
         """Should raise immediately on HTTP 401 (no retry)."""
         import urllib.error
-        from lib.engram import _http_post
+        from claw_compactor.engram import _http_post
 
         call_count = 0
 
@@ -879,7 +879,7 @@ class TestObserverBatching:
 
     def test_large_batch_multiple_calls(self, workspace: Path) -> None:
         """When total tokens > MAX_OBSERVER_INPUT_TOKENS, multiple LLM calls are made."""
-        from lib.engram import _count_messages_tokens
+        from claw_compactor.engram import _count_messages_tokens
 
         eng = _make_engine_with_mock(workspace, FAKE_OBSERVATION, observer_threshold=9999)
 
@@ -894,7 +894,7 @@ class TestObserverBatching:
         eng._llm_observe = counting_llm_observe  # type: ignore[method-assign]
 
         # Patch _count_messages_tokens in engram module to return predictable high values
-        import lib.engram as engram_mod
+        import claw_compactor.engram as engram_mod
         original_count = engram_mod._count_messages_tokens
 
         def fake_count(msgs):
@@ -933,7 +933,7 @@ class TestObserverBatching:
 
     def test_batching_appends_combined_observation(self, workspace: Path) -> None:
         """Batched observations should be combined and appended to storage."""
-        import lib.engram as engram_mod
+        import claw_compactor.engram as engram_mod
 
         eng = _make_engine_with_mock(workspace, FAKE_OBSERVATION, observer_threshold=9999)
 
@@ -968,7 +968,7 @@ class TestObserverBatching:
 
     def test_single_oversized_message_doesnt_loop(self, workspace: Path) -> None:
         """A single message that exceeds the limit should still be processed (no infinite loop)."""
-        import lib.engram as engram_mod
+        import claw_compactor.engram as engram_mod
 
         eng = _make_engine_with_mock(workspace, FAKE_OBSERVATION, observer_threshold=9999)
         call_count = [0]

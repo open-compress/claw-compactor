@@ -19,7 +19,7 @@ import pytest
 # Bootstrap path so both lib.* and compressed_context resolve correctly.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from lib.fusion.engine import (
+from claw_compactor.fusion.engine import (
     FusionEngine,
     RLEStage,
     TokenOptStage,
@@ -30,10 +30,10 @@ from lib.fusion.engine import (
     _empty_aggregate_stats,
     _aggregate_stats,
 )
-from lib.fusion.base import FusionContext
-from lib.fusion.pipeline import FusionPipeline
-from lib.rewind.store import RewindStore
-from lib.tokens import estimate_tokens
+from claw_compactor.fusion.base import FusionContext
+from claw_compactor.fusion.pipeline import FusionPipeline
+from claw_compactor.rewind.store import RewindStore
+from claw_compactor.tokens import estimate_tokens
 
 
 # ---------------------------------------------------------------------------
@@ -638,7 +638,7 @@ class TestRLEStage:
         assert "[BTC,ETH,SOL,BNB,DOGE]" in result.content
 
     def test_returns_fusion_result(self):
-        from lib.fusion.base import FusionResult
+        from claw_compactor.fusion.base import FusionResult
         stage = RLEStage()
         ctx = FusionContext(content="some text", content_type="text")
         result = stage.apply(ctx)

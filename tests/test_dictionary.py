@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-from lib.dictionary import (
+from claw_compactor.dictionary import (
     build_codebook, compress_text, decompress_text,
     save_codebook, load_codebook, compression_stats,
     _generate_codes, _tokenize_ngrams, _extract_ip_prefixes,

@@ -10,15 +10,15 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-from lib.tokens import estimate_tokens, using_tiktoken
-from lib.dictionary import (
+from claw_compactor.tokens import estimate_tokens, using_tiktoken
+from claw_compactor.dictionary import (
     build_codebook, compress_text, decompress_text, compression_stats,
 )
-from lib.tokenizer_optimizer import (
+from claw_compactor.tokenizer_optimizer import (
     optimize_tokens, estimate_savings, normalize_punctuation,
     compress_table_to_kv, strip_bold_italic, compact_bullets,
 )
-from lib.rle import compress as rle_compress, compress_paths, compress_ip_families
+from claw_compactor.rle import compress as rle_compress, compress_paths, compress_ip_families
 from compressed_context import compress_with_stats
 
 

@@ -25,8 +25,8 @@ Core abstractions:
 
 Part of claw-compactor v7. License: MIT.
 """
-from lib.fusion.base import FusionStage, FusionContext, FusionResult
-from lib.fusion.pipeline import FusionPipeline, FusionPipelineResult
+from claw_compactor.fusion.base import FusionStage, FusionContext, FusionResult
+from claw_compactor.fusion.pipeline import FusionPipeline, FusionPipelineResult
 
 __all__ = [
     "FusionStage",

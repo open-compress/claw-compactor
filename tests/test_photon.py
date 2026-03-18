@@ -27,7 +27,7 @@ from unittest.mock import patch, MagicMock
 # Ensure scripts/ is on the path (mirrors conftest.py behaviour)
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from lib.fusion.photon import (
+from claw_compactor.fusion.photon import (
     PhotonStage,
     PILLOW_AVAILABLE,
     estimate_image_tokens,
@@ -42,7 +42,7 @@ from lib.fusion.photon import (
     _THRESHOLD_1MB,
     _THRESHOLD_2MB,
 )
-from lib.fusion.base import FusionContext
+from claw_compactor.fusion.base import FusionContext
 
 
 # ---------------------------------------------------------------------------
@@ -335,7 +335,7 @@ class TestPhotonPillowFallback(unittest.TestCase):
     def _apply_without_pillow(self, content: str):
         """Patch PILLOW_AVAILABLE to False and run apply()."""
         stage = PhotonStage()
-        import lib.fusion.photon as photon_mod
+        import claw_compactor.fusion.photon as photon_mod
         original = photon_mod.PILLOW_AVAILABLE
         photon_mod.PILLOW_AVAILABLE = False
         try:

@@ -19,8 +19,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from lib.fusion.base import FusionContext, FusionResult, FusionStage
-from lib.fusion.semantic_dedup import (
+from claw_compactor.fusion.base import FusionContext, FusionResult, FusionStage
+from claw_compactor.fusion.semantic_dedup import (
     SemanticDedup,
     DedupStats,
     dedup_across_messages,

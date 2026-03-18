@@ -6,9 +6,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from lib.exceptions import FileNotFoundError_, MemCompressError, ParseError, TokenEstimationError
-from lib.dictionary import load_codebook, save_codebook, compress_text, decompress_text, build_codebook
-from lib.tokens import estimate_tokens
+from claw_compactor.exceptions import FileNotFoundError_, MemCompressError, ParseError, TokenEstimationError
+from claw_compactor.dictionary import load_codebook, save_codebook, compress_text, decompress_text, build_codebook
+from claw_compactor.tokens import estimate_tokens
 
 
 class TestExceptions:

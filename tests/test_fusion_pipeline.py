@@ -9,8 +9,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from lib.fusion.base import FusionStage, FusionContext, FusionResult
-from lib.fusion.pipeline import FusionPipeline, FusionPipelineResult, FusionStepResult
+from claw_compactor.fusion.base import FusionStage, FusionContext, FusionResult
+from claw_compactor.fusion.pipeline import FusionPipeline, FusionPipelineResult, FusionStepResult
 
 
 # ---------------------------------------------------------------------------

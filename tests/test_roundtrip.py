@@ -11,11 +11,11 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-from lib.dictionary import (
+from claw_compactor.dictionary import (
     build_codebook, compress_text, decompress_text,
     save_codebook, load_codebook,
 )
-from lib.rle import (
+from claw_compactor.rle import (
     compress_paths, decompress_paths,
     compress_ip_families, decompress_ip_families,
 )

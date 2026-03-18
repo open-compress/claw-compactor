@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from lib.config import MemCompressConfig, load_config, DEFAULT_CONFIG
+from claw_compactor.config import MemCompressConfig, load_config, DEFAULT_CONFIG
 
 
 class TestMemCompressConfig:

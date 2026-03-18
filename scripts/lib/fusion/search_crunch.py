@@ -12,8 +12,8 @@ import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 
-from lib.fusion.base import FusionStage, FusionContext, FusionResult
-from lib.tokens import estimate_tokens
+from claw_compactor.fusion.base import FusionStage, FusionContext, FusionResult
+from claw_compactor.tokens import estimate_tokens
 
 # ---------------------------------------------------------------------------
 # Configuration constants

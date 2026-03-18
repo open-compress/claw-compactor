@@ -1,6 +1,6 @@
 [project]
 name = "claw-compactor"
-version = "7.0.0"
+version = "7.0.1"
 description = "14-stage Fusion Pipeline for LLM token compression — 15-82% reduction depending on content, zero LLM inference cost, reversible compression, AST-aware code analysis"
 license = "MIT"
 requires-python = ">=3.9"
@@ -54,7 +54,7 @@ Changelog = "https://github.com/open-compress/claw-compactor/releases"
 "Community" = "https://discord.com/invite/clawd"
 
 [project.scripts]
-claw-compactor = "scripts.cli:main"
+claw-compactor = "claw_compactor.cli:main"
 
 [project.optional-dependencies]
 accurate = ["tiktoken>=0.5.0"]
@@ -63,5 +63,10 @@ dev = ["pytest>=7.0", "pyyaml>=6.0"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
-[tool.setuptools.packages.find]
-exclude = ["proxy*", "assets*", "references*", "docs*"]
+[tool.setuptools.package-dir]
+"claw_compactor" = "scripts/lib"
+"claw_compactor.fusion" = "scripts/lib/fusion"
+"claw_compactor.rewind" = "scripts/lib/rewind"
+
+[tool.setuptools.packages]
+find = { where = ["."], include = ["claw_compactor*", "benchmark*", "scripts*"] }

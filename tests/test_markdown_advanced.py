@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-from lib.markdown import (
+from claw_compactor.markdown import (
     normalize_chinese_punctuation,
     strip_emoji,
     remove_empty_sections,

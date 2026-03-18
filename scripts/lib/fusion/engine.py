@@ -42,36 +42,41 @@ _SCRIPTS_DIR = Path(__file__).resolve().parent.parent.parent
 if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
 
-from lib.fusion.base import FusionContext, FusionResult, FusionStage
-from lib.fusion.pipeline import FusionPipeline
-from lib.fusion.cortex import Cortex
-from lib.fusion.quantum_lock import QuantumLock
-from lib.fusion.photon import PhotonStage
-from lib.fusion.ionizer import Ionizer
-from lib.fusion.log_crunch import LogCrunch
-from lib.fusion.search_crunch import SearchCrunch
-from lib.fusion.diff_crunch import DiffCrunch
-from lib.fusion.semantic_dedup import SemanticDedup, dedup_across_messages
-from lib.fusion.structural_collapse import StructuralCollapse
-from lib.fusion.neurosyntax import Neurosyntax
-from lib.fusion.nexus import NexusStage
-from lib.rewind.store import RewindStore
-from lib.tokens import estimate_tokens
+from claw_compactor.fusion.base import FusionContext, FusionResult, FusionStage
+from claw_compactor.fusion.pipeline import FusionPipeline
+from claw_compactor.fusion.cortex import Cortex
+from claw_compactor.fusion.quantum_lock import QuantumLock
+from claw_compactor.fusion.photon import PhotonStage
+from claw_compactor.fusion.ionizer import Ionizer
+from claw_compactor.fusion.log_crunch import LogCrunch
+from claw_compactor.fusion.search_crunch import SearchCrunch
+from claw_compactor.fusion.diff_crunch import DiffCrunch
+from claw_compactor.fusion.semantic_dedup import SemanticDedup, dedup_across_messages
+from claw_compactor.fusion.structural_collapse import StructuralCollapse
+from claw_compactor.fusion.neurosyntax import Neurosyntax
+from claw_compactor.fusion.nexus import NexusStage
+from claw_compactor.rewind.store import RewindStore
+from claw_compactor.tokens import estimate_tokens
 
 # Legacy modules wrapped as adapter stages
-import lib.rle as _rle
-from lib.tokenizer_optimizer import optimize_tokens as _optimize_tokens
+import claw_compactor.rle as _rle
+from claw_compactor.tokenizer_optimizer import optimize_tokens as _optimize_tokens
 
-# compressed_context lives in scripts/, not scripts/lib/
+# compressed_context lives in scripts/, not scripts/lib/ — optional import
 _CC_DIR = _SCRIPTS_DIR
 if str(_CC_DIR) not in sys.path:
     sys.path.insert(0, str(_CC_DIR))
 
-from compressed_context import (  # type: ignore[import]
-    compress_ultra as _compress_ultra,
-    ULTRA_ABBREVS as _ULTRA_ABBREVS,
-    ULTRA_FILLERS as _ULTRA_FILLERS,
-)
+try:
+    from compressed_context import (  # type: ignore[import]
+        compress_ultra as _compress_ultra,
+        ULTRA_ABBREVS as _ULTRA_ABBREVS,
+        ULTRA_FILLERS as _ULTRA_FILLERS,
+    )
+except ImportError:
+    _compress_ultra = None
+    _ULTRA_ABBREVS = {}
+    _ULTRA_FILLERS = set()
 
 
 # ---------------------------------------------------------------------------
@@ -149,11 +154,11 @@ class AbbrevStage(FusionStage):
     order = 45
 
     def should_apply(self, ctx: FusionContext) -> bool:
-        return ctx.content_type == "text" and bool(ctx.content)
+        return ctx.content_type == "text" and bool(ctx.content) and _compress_ultra is not None
 
     def apply(self, ctx: FusionContext) -> FusionResult:
         original_tokens = estimate_tokens(ctx.content)
-        compressed = _compress_ultra(ctx.content)
+        compressed = _compress_ultra(ctx.content)  # type: ignore[misc]
         compressed_tokens = estimate_tokens(compressed)
         markers: list[str] = []
         if compressed_tokens < original_tokens:

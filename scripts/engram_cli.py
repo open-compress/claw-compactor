@@ -27,11 +27,16 @@ import sys
 from pathlib import Path
 
 # Ensure scripts/ is on the Python path
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+_scripts_dir = str(Path(__file__).resolve().parent)
+if _scripts_dir not in sys.path:
+    sys.path.insert(0, _scripts_dir)
 
-from lib.engram import EngramEngine
-from lib.config import load_engram_config, engram_engine_kwargs
-from lib.tokens import estimate_tokens
+from claw_compactor.engram import EngramEngine
+from claw_compactor.config import load_engram_config, engram_engine_kwargs
+from claw_compactor.tokens import estimate_tokens
 
 
 # ---------------------------------------------------------------------------
@@ -210,7 +215,7 @@ def cmd_auto(engine: EngramEngine, args: argparse.Namespace) -> int:
       --max-run-seconds S    Soft deadline in seconds (default 120).
     """
     from engram_auto import EngramAutoRunner, DEFAULT_MAX_SESSIONS_PER_RUN, DEFAULT_MAX_RUN_SECONDS
-    from lib.config import load_engram_config
+    from claw_compactor.config import load_engram_config
 
     cfg_path = getattr(args, "config", None)
     if cfg_path:
@@ -373,7 +378,7 @@ def _make_engine(workspace: Path, args: argparse.Namespace) -> EngramEngine:
 
 
 # Import defaults so _make_engine can reference them
-from lib.engram import DEFAULT_OBSERVER_THRESHOLD, DEFAULT_REFLECTOR_THRESHOLD
+from claw_compactor.engram import DEFAULT_OBSERVER_THRESHOLD, DEFAULT_REFLECTOR_THRESHOLD
 
 
 def build_parser() -> argparse.ArgumentParser:

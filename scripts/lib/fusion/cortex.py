@@ -11,9 +11,9 @@ Part of claw-compactor v7. License: MIT.
 """
 from __future__ import annotations
 
-from lib.fusion.base import FusionContext, FusionResult, FusionStage
-from lib.fusion.content_detector import ContentDetector
-from lib.tokens import estimate_tokens
+from claw_compactor.fusion.base import FusionContext, FusionResult, FusionStage
+from claw_compactor.fusion.content_detector import ContentDetector
+from claw_compactor.tokens import estimate_tokens
 
 
 class Cortex(FusionStage):

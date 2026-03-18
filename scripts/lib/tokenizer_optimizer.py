@@ -17,7 +17,7 @@ from typing import List, Tuple
 logger = logging.getLogger(__name__)
 
 # Chinese full-width punctuation → half-width (canonical map from unicode_maps)
-from lib.unicode_maps import ZH_PUNCT_MAP as _ZH_PUNCT_MAP, normalize_zh_punctuation as _normalize_zh  # noqa: E402
+from claw_compactor.unicode_maps import ZH_PUNCT_MAP as _ZH_PUNCT_MAP, normalize_zh_punctuation as _normalize_zh  # noqa: E402
 
 # Bold/italic markdown decorators
 _BOLD_RE = re.compile(r'\*\*(.+?)\*\*')
@@ -170,7 +170,7 @@ def optimize_tokens(text: str, aggressive: bool = False) -> str:
 
 def estimate_savings(original: str, optimized: str) -> dict:
     """Calculate token savings between original and optimized text."""
-    from lib.tokens import estimate_tokens
+    from claw_compactor.tokens import estimate_tokens
     orig_tokens = estimate_tokens(original)
     opt_tokens = estimate_tokens(optimized)
     reduction = ((orig_tokens - opt_tokens) / orig_tokens * 100) if orig_tokens else 0.0

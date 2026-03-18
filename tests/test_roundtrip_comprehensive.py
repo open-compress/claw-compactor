@@ -5,8 +5,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from lib.dictionary import build_codebook, compress_text, decompress_text
-from lib.rle import compress, decompress, compress_paths, decompress_paths, compress_ip_families, decompress_ip_families
+from claw_compactor.dictionary import build_codebook, compress_text, decompress_text
+from claw_compactor.rle import compress, decompress, compress_paths, decompress_paths, compress_ip_families, decompress_ip_families
 
 
 class TestDictionaryRoundtrip:

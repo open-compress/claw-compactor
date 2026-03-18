@@ -6,10 +6,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 from compress_memory import rule_compress
-from lib.tokens import estimate_tokens
-from lib.dictionary import build_codebook, compress_text, decompress_text
-from lib.tokenizer_optimizer import optimize_tokens
-from lib.rle import compress as rle_compress
+from claw_compactor.tokens import estimate_tokens
+from claw_compactor.dictionary import build_codebook, compress_text, decompress_text
+from claw_compactor.tokenizer_optimizer import optimize_tokens
+from claw_compactor.rle import compress as rle_compress
 
 WORKSPACE = Path("/home/user/workspace")
 

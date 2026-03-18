@@ -8,7 +8,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 from estimate_tokens import scan_path, format_human, _score_potential
-from lib.tokens import estimate_tokens, using_tiktoken
+from claw_compactor.tokens import estimate_tokens, using_tiktoken
 
 
 class TestEstimateTokens:

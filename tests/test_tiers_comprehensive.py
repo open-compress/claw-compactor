@@ -55,7 +55,7 @@ class TestFindMemoryFiles:
         assert isinstance(files, list)
 
     def test_nonexistent(self):
-        from lib.exceptions import FileNotFoundError_
+        from claw_compactor.exceptions import FileNotFoundError_
         with pytest.raises(FileNotFoundError_):
             _find_memory_files("/nonexistent/xyz")
 

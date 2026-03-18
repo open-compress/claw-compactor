@@ -15,9 +15,9 @@ Part of claw-compactor. License: MIT.
 # Expose Engram classes at package level for convenient imports:
 #   from scripts.lib import EngramEngine
 #   from scripts.lib import EngramStorage
-from lib.engram import EngramEngine  # noqa: F401
-from lib.engram_storage import EngramStorage  # noqa: F401
-from lib.engram_prompts import (  # noqa: F401
+from claw_compactor.engram import EngramEngine  # noqa: F401
+from claw_compactor.engram_storage import EngramStorage  # noqa: F401
+from claw_compactor.engram_prompts import (  # noqa: F401
     OBSERVER_SYSTEM_PROMPT,
     REFLECTOR_SYSTEM_PROMPT,
     OBSERVER_USER_TEMPLATE,

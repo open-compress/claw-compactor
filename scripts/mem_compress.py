@@ -24,11 +24,16 @@ from datetime import datetime, date
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-# Ensure scripts/ is on path for lib imports
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+# Ensure project root (for claw_compactor symlink/package) and scripts/ are on path
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+_scripts_dir = str(Path(__file__).resolve().parent)
+if _scripts_dir not in sys.path:
+    sys.path.insert(0, _scripts_dir)
 
-from lib.tokens import estimate_tokens, using_tiktoken
-from lib.exceptions import FileNotFoundError_, MemCompressError
+from claw_compactor.tokens import estimate_tokens, using_tiktoken
+from claw_compactor.exceptions import FileNotFoundError_, MemCompressError
 
 
 def _workspace_path(workspace: str) -> Path:
@@ -251,7 +256,7 @@ def cmd_observe(workspace: Path, args) -> int:
 def cmd_dict(workspace: Path, args) -> int:
     """Dictionary-based compression."""
     from dictionary_compress import cmd_build, cmd_stats
-    from lib.dictionary import save_codebook
+    from claw_compactor.dictionary import save_codebook
 
     mem_dir = workspace / "memory"
     mem_dir.mkdir(exist_ok=True)
@@ -268,7 +273,7 @@ def cmd_dict(workspace: Path, args) -> int:
 
 def cmd_optimize(workspace: Path, args) -> int:
     """Apply tokenizer-level format optimization."""
-    from lib.tokenizer_optimizer import optimize_tokens, estimate_savings
+    from claw_compactor.tokenizer_optimizer import optimize_tokens, estimate_savings
 
     dry_run = getattr(args, 'dry_run', False)
     files = _collect_md_files(workspace)
@@ -344,8 +349,7 @@ def cmd_full(workspace: Path, args) -> int:
 
     # 2b. Engram status check (non-blocking — Layer 6)
     try:
-        sys.path.insert(0, str(Path(__file__).resolve().parent))
-        from lib.engram import EngramEngine
+        from claw_compactor.engram import EngramEngine
         engram_engine = EngramEngine(workspace_path=workspace)
         threads = engram_engine.storage.list_threads()
         if threads:
@@ -415,9 +419,9 @@ def cmd_full(workspace: Path, args) -> int:
 def cmd_benchmark(workspace: Path, args) -> int:
     """Non-destructive performance benchmark."""
     from compress_memory import rule_compress
-    from lib.dictionary import build_codebook, compress_text
-    from lib.rle import compress as rle_compress
-    from lib.tokenizer_optimizer import optimize_tokens
+    from claw_compactor.dictionary import build_codebook, compress_text
+    from claw_compactor.rle import compress as rle_compress
+    from claw_compactor.tokenizer_optimizer import optimize_tokens
 
     files = _collect_md_files(workspace)
     if not files:

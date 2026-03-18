@@ -13,7 +13,7 @@ Part of claw-compactor v7. License: MIT.
 from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
-from lib.fusion.base import FusionStage, FusionContext, FusionResult
+from claw_compactor.fusion.base import FusionStage, FusionContext, FusionResult
 
 logger = logging.getLogger(__name__)
 

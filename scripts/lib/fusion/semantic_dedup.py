@@ -16,8 +16,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Sequence
 
-from lib.fusion.base import FusionContext, FusionResult, FusionStage
-from lib.tokens import estimate_tokens
+from claw_compactor.fusion.base import FusionContext, FusionResult, FusionStage
+from claw_compactor.tokens import estimate_tokens
 
 # ---------------------------------------------------------------------------
 # Constants

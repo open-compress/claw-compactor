@@ -5,12 +5,12 @@ import pytest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-from lib.dictionary import (
+from claw_compactor.dictionary import (
     _generate_codes, _tokenize_ngrams, _extract_ip_prefixes, _extract_path_prefixes,
     build_codebook, compress_text, decompress_text,
     save_codebook, load_codebook, compression_stats,
 )
-from lib.tokens import estimate_tokens
+from claw_compactor.tokens import estimate_tokens
 
 
 class TestGenerateCodes:

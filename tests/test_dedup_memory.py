@@ -8,7 +8,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 from dedup_memory import run_dedup, format_human, _collect_entries
-from lib.dedup import find_duplicates, merge_duplicates, jaccard, _shingles
+from claw_compactor.dedup import find_duplicates, merge_duplicates, jaccard, _shingles
 
 
 class TestShingles:

@@ -19,8 +19,8 @@ import math
 import re
 from typing import Any
 
-from lib.fusion.base import FusionContext, FusionResult, FusionStage
-from lib.tokens import estimate_tokens
+from claw_compactor.fusion.base import FusionContext, FusionResult, FusionStage
+from claw_compactor.tokens import estimate_tokens
 
 logger = logging.getLogger(__name__)
 

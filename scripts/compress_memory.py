@@ -21,15 +21,20 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from lib.tokens import estimate_tokens, using_tiktoken
-from lib.markdown import (
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+_scripts_dir = str(Path(__file__).resolve().parent)
+if _scripts_dir not in sys.path:
+    sys.path.insert(0, _scripts_dir)
+from claw_compactor.tokens import estimate_tokens, using_tiktoken
+from claw_compactor.markdown import (
     strip_markdown_redundancy, remove_duplicate_lines, parse_sections,
     normalize_chinese_punctuation, strip_emoji, remove_empty_sections,
     compress_markdown_table, merge_similar_bullets, merge_short_bullets,
 )
-from lib.dedup import find_duplicates, merge_duplicates
-from lib.exceptions import FileNotFoundError_, MemCompressError
+from claw_compactor.dedup import find_duplicates, merge_duplicates
+from claw_compactor.exceptions import FileNotFoundError_, MemCompressError
 
 logger = logging.getLogger(__name__)
 

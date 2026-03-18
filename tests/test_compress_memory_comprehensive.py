@@ -8,7 +8,7 @@ from compress_memory import (
     rule_compress, compress_file, generate_llm_prompt,
     _collect_files, _file_age_days,
 )
-from lib.tokens import estimate_tokens
+from claw_compactor.tokens import estimate_tokens
 
 
 class TestRuleCompress:
@@ -172,7 +172,7 @@ class TestCollectFiles:
         assert len(files) == 1
 
     def test_nonexistent(self):
-        from lib.exceptions import FileNotFoundError_
+        from claw_compactor.exceptions import FileNotFoundError_
         with pytest.raises(FileNotFoundError_):
             _collect_files("/nonexistent/xyz")
 

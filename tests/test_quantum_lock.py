@@ -13,7 +13,7 @@ import pytest
 # Ensure scripts/ is on sys.path (mirrors other test files in this suite)
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from lib.fusion.quantum_lock import (
+from claw_compactor.fusion.quantum_lock import (
     APPENDIX_END,
     APPENDIX_START,
     DynamicFragment,
@@ -22,7 +22,7 @@ from lib.fusion.quantum_lock import (
     get_prefix_hash,
     stabilize,
 )
-from lib.fusion.base import FusionContext, FusionResult
+from claw_compactor.fusion.base import FusionContext, FusionResult
 
 
 # ---------------------------------------------------------------------------

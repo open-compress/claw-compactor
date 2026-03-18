@@ -22,9 +22,9 @@ import pytest
 # standalone test-file runs.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from lib.fusion.content_detector import ContentDetector  # noqa: E402
-from lib.fusion.cortex import Cortex  # noqa: E402
-from lib.fusion.base import FusionContext, FusionResult  # noqa: E402
+from claw_compactor.fusion.content_detector import ContentDetector  # noqa: E402
+from claw_compactor.fusion.cortex import Cortex  # noqa: E402
+from claw_compactor.fusion.base import FusionContext, FusionResult  # noqa: E402
 
 
 # ===========================================================================
@@ -224,7 +224,7 @@ class TestCortex:
         assert result.content == original
 
     def test_cortex_is_fusion_stage_subclass(self):
-        from lib.fusion.base import FusionStage
+        from claw_compactor.fusion.base import FusionStage
         assert isinstance(Cortex(), FusionStage)
 
     def test_cortex_sets_language_for_python_code(self):

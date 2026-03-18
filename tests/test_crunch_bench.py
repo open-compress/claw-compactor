@@ -11,10 +11,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from lib.crunch_bench import BenchmarkResult, CrunchBench, _approx_tokens, _fmt_stats
-from lib.fusion.base import FusionContext, FusionResult, FusionStage
-from lib.fusion.pipeline import FusionPipeline
-from lib.rewind.store import RewindStore
+from claw_compactor.crunch_bench import BenchmarkResult, CrunchBench, _approx_tokens, _fmt_stats
+from claw_compactor.fusion.base import FusionContext, FusionResult, FusionStage
+from claw_compactor.fusion.pipeline import FusionPipeline
+from claw_compactor.rewind.store import RewindStore
 
 
 # ---------------------------------------------------------------------------

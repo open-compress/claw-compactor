@@ -11,9 +11,9 @@ from estimate_tokens import scan_path, format_human as est_format
 from compress_memory import rule_compress, compress_file, generate_llm_prompt
 from generate_summary_tiers import generate_tiers
 from dedup_memory import run_dedup
-from lib.tokens import estimate_tokens
-from lib.markdown import parse_sections, strip_markdown_redundancy
-from lib.dedup import find_duplicates
+from claw_compactor.tokens import estimate_tokens
+from claw_compactor.markdown import parse_sections, strip_markdown_redundancy
+from claw_compactor.dedup import find_duplicates
 
 
 class TestFullPipeline:

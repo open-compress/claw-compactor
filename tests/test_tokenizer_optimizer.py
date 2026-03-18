@@ -6,12 +6,12 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-from lib.tokenizer_optimizer import (
+from claw_compactor.tokenizer_optimizer import (
     normalize_punctuation, strip_bold_italic, strip_trivial_backticks,
     minimize_whitespace, compact_bullets, compress_table_to_kv,
     optimize_tokens, estimate_savings,
 )
-from lib.tokens import estimate_tokens
+from claw_compactor.tokens import estimate_tokens
 
 
 class TestNormalizePunctuation:

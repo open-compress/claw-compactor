@@ -12,7 +12,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from lib.feedback import FeedbackLoop, RetrievalEvent
+from claw_compactor.feedback import FeedbackLoop, RetrievalEvent
 
 
 # ---------------------------------------------------------------------------

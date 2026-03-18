@@ -8,7 +8,7 @@ import logging
 from difflib import SequenceMatcher
 from typing import List, Tuple, Dict, Optional
 
-from lib.unicode_maps import ZH_PUNCT_MAP as _ZH_PUNCT_MAP, normalize_zh_punctuation as _normalize_zh
+from claw_compactor.unicode_maps import ZH_PUNCT_MAP as _ZH_PUNCT_MAP, normalize_zh_punctuation as _normalize_zh
 
 logger = logging.getLogger(__name__)
 

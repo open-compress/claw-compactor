@@ -24,8 +24,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from lib.fusion.base import FusionContext, FusionResult  # noqa: E402
-from lib.fusion.nexus import (  # noqa: E402
+from claw_compactor.fusion.base import FusionContext, FusionResult  # noqa: E402
+from claw_compactor.fusion.nexus import (  # noqa: E402
     NexusStage,
     NexusModel,
     TORCH_AVAILABLE,
@@ -37,7 +37,7 @@ from lib.fusion.nexus import (  # noqa: E402
     _deduplicate_consecutive,
     _remove_repeated_ngrams,
 )
-from lib.fusion.nexus_model import CrunchModel  # noqa: E402
+from claw_compactor.fusion.nexus_model import CrunchModel  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -73,11 +73,11 @@ class TestTorchAvailableFlag:
         assert isinstance(TORCH_AVAILABLE, bool)
 
     def test_nexus_model_module_exports_flag(self):
-        from lib.fusion.nexus_model import TORCH_AVAILABLE as mf
+        from claw_compactor.fusion.nexus_model import TORCH_AVAILABLE as mf
         assert isinstance(mf, bool)
 
     def test_nexus_and_model_flags_agree(self):
-        from lib.fusion.nexus_model import TORCH_AVAILABLE as mf
+        from claw_compactor.fusion.nexus_model import TORCH_AVAILABLE as mf
         assert TORCH_AVAILABLE == mf
 
 
@@ -132,7 +132,7 @@ class TestShouldApply:
             # We cannot call stage.should_apply here because the patch only
             # affects the module namespace; the stage already captured the flag.
             # Instead verify that a freshly-patched stage would behave correctly.
-            import lib.fusion.nexus as nexus_mod
+            import claw_compactor.fusion.nexus as nexus_mod
             orig = nexus_mod.TORCH_AVAILABLE
             nexus_mod.TORCH_AVAILABLE = False
             try:
@@ -396,7 +396,7 @@ class TestNexusStageIntegration:
 
     def test_fallback_warning_emitted_when_torch_absent(self):
         """When torch unavailable, a warning is appended to result.warnings."""
-        import lib.fusion.nexus as nexus_mod
+        import claw_compactor.fusion.nexus as nexus_mod
         orig = nexus_mod.TORCH_AVAILABLE
         nexus_mod.TORCH_AVAILABLE = False
         try:

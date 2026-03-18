@@ -67,7 +67,7 @@ class TestGenerateAutoSummary:
         f.write_text(f"# Big\n\n{lines}\n")
         summary = generate_auto_summary([f], budget=100)
         # Should be within budget
-        from lib.tokens import estimate_tokens
+        from claw_compactor.tokens import estimate_tokens
         assert estimate_tokens(summary) <= 120  # small margin
 
     def test_empty_files(self, tmp_path):

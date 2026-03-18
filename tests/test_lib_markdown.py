@@ -4,7 +4,7 @@ import pytest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-from lib.markdown import (
+from claw_compactor.markdown import (
     parse_sections, strip_markdown_redundancy, remove_duplicate_lines,
     normalize_chinese_punctuation, strip_emoji, remove_empty_sections,
     compress_markdown_table, merge_similar_bullets, merge_short_bullets,

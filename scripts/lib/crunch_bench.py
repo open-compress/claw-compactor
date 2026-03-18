@@ -9,9 +9,9 @@ import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from lib.fusion.base import FusionContext
-from lib.fusion.pipeline import FusionPipeline
-from lib.rewind.store import RewindStore
+from claw_compactor.fusion.base import FusionContext
+from claw_compactor.fusion.pipeline import FusionPipeline
+from claw_compactor.rewind.store import RewindStore
 
 if TYPE_CHECKING:
     pass

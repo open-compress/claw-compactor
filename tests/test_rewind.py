@@ -16,8 +16,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from lib.rewind.store import RewindStore
-from lib.rewind.marker import (
+from claw_compactor.rewind.store import RewindStore
+from claw_compactor.rewind.marker import (
     embed_marker,
     extract_markers,
     has_markers,
@@ -29,7 +29,7 @@ from lib.rewind.marker import (
 # Try to import retriever; skip retriever tests if module is missing
 # ---------------------------------------------------------------------------
 try:
-    from lib.rewind.retriever import rewind_tool_def, handle_rewind
+    from claw_compactor.rewind.retriever import rewind_tool_def, handle_rewind
     _HAS_RETRIEVER = True
 except (ImportError, ModuleNotFoundError):
     _HAS_RETRIEVER = False

@@ -16,13 +16,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
 import pytest
 
-from lib.fusion.base import FusionContext
-from lib.fusion.ionizer import Ionizer
-from lib.fusion.log_crunch import LogCrunch
-from lib.fusion.search_crunch import SearchCrunch
-from lib.fusion.diff_crunch import DiffCrunch
-from lib.rewind.store import RewindStore
-from lib.rewind.marker import extract_markers, has_markers
+from claw_compactor.fusion.base import FusionContext
+from claw_compactor.fusion.ionizer import Ionizer
+from claw_compactor.fusion.log_crunch import LogCrunch
+from claw_compactor.fusion.search_crunch import SearchCrunch
+from claw_compactor.fusion.diff_crunch import DiffCrunch
+from claw_compactor.rewind.store import RewindStore
+from claw_compactor.rewind.marker import extract_markers, has_markers
 
 
 # ---------------------------------------------------------------------------
@@ -612,7 +612,7 @@ class TestPhase3Integration:
         assert DiffCrunch.name == "diff_crunch"
 
     def test_all_stages_return_fusion_result(self):
-        from lib.fusion.base import FusionResult
+        from claw_compactor.fusion.base import FusionResult
         stages_and_ctxs = [
             (Ionizer(), json_ctx(make_dict_array(20))),
             (LogCrunch(), log_ctx(SAMPLE_LOG)),

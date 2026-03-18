@@ -24,7 +24,7 @@ import pytest
 # Ensure scripts/ is on path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from lib.config import load_engram_config, engram_engine_kwargs, _load_dotenv, _deep_merge
+from claw_compactor.config import load_engram_config, engram_engine_kwargs, _load_dotenv, _deep_merge
 from engram_auto import detect_thread_id, convert_session, EngramAutoRunner, _extract_text
 
 
@@ -407,7 +407,7 @@ class TestEngramAutoRunner:
         # dry_run → nothing ingested
         assert all(v == 0 for v in totals.values()) or totals == {}
         # storage should have no pending messages
-        from lib.engram_storage import EngramStorage
+        from claw_compactor.engram_storage import EngramStorage
         storage = EngramStorage(workspace)
         threads = storage.list_threads()
         assert threads == []
@@ -433,7 +433,7 @@ class TestEngramAutoRunner:
         with patch("lib.engram.EngramEngine._call_llm", return_value="fake obs"):
             totals = runner.run_once()
 
-        from lib.engram_storage import EngramStorage
+        from claw_compactor.engram_storage import EngramStorage
         storage = EngramStorage(workspace)
 
         # Use pending.jsonl existence (not meta.json which only appears after observe)
@@ -469,7 +469,7 @@ class TestEngramAutoRunner:
             runner.run_once()
 
         # Get pending count after first run
-        from lib.engram_storage import EngramStorage
+        from claw_compactor.engram_storage import EngramStorage
         storage = EngramStorage(workspace)
         threads = storage.list_threads()
         first_counts = {t: len(storage.read_pending(t)) for t in threads}
@@ -524,7 +524,7 @@ class TestEngramAutoRunner:
             runner.run_once()
 
         # Storage should be consistent (no corrupt JSONL)
-        from lib.engram_storage import EngramStorage
+        from claw_compactor.engram_storage import EngramStorage
         storage = EngramStorage(workspace)
         for tid in storage.list_threads():
             # read_pending() should succeed without exceptions

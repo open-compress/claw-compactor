@@ -19,7 +19,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from lib.fusion.structural_collapse import (
+from claw_compactor.fusion.structural_collapse import (
     StructuralCollapse,
     _extract_template,
     _find_import_blocks,
@@ -28,7 +28,7 @@ from lib.fusion.structural_collapse import (
     _format_import_summary,
     _format_repeated_summary,
 )
-from lib.fusion.base import FusionContext, FusionResult, FusionStage
+from claw_compactor.fusion.base import FusionContext, FusionResult, FusionStage
 
 
 # ---------------------------------------------------------------------------
@@ -822,7 +822,7 @@ class TestEdgeCases:
 
     def test_pipeline_integration(self):
         """StructuralCollapse integrates correctly with FusionPipeline."""
-        from lib.fusion.pipeline import FusionPipeline
+        from claw_compactor.fusion.pipeline import FusionPipeline
 
         imports = [
             "import os",

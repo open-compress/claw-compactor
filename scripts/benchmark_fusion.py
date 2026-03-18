@@ -28,16 +28,20 @@ from typing import Any
 # Path setup — ensure scripts/ lib is importable regardless of cwd
 # ---------------------------------------------------------------------------
 _SCRIPTS_DIR = Path(__file__).resolve().parent
-sys.path.insert(0, str(_SCRIPTS_DIR))
+_PROJECT_ROOT = str(_SCRIPTS_DIR.parent)
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
 
-from lib.tokens import estimate_tokens  # noqa: E402
+from claw_compactor.tokens import estimate_tokens  # noqa: E402
 from compressed_context import compress_with_stats  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Optional FusionEngine import
 # ---------------------------------------------------------------------------
 try:
-    from lib.fusion.engine import FusionEngine  # type: ignore[import]
+    from claw_compactor.fusion.engine import FusionEngine  # type: ignore[import]
     _FUSION_ENGINE_AVAILABLE = True
 except ImportError:
     _FUSION_ENGINE_AVAILABLE = False
@@ -46,14 +50,14 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Optional FusionPipeline + individual stages (always available)
 # ---------------------------------------------------------------------------
-from lib.fusion.base import FusionContext  # noqa: E402
-from lib.fusion.pipeline import FusionPipeline  # noqa: E402
-from lib.fusion.neurosyntax import Neurosyntax  # noqa: E402
-from lib.fusion.ionizer import Ionizer  # noqa: E402
-from lib.fusion.log_crunch import LogCrunch  # noqa: E402
-from lib.fusion.diff_crunch import DiffCrunch  # noqa: E402
-from lib.fusion.search_crunch import SearchCrunch  # noqa: E402
-from lib.fusion.nexus import NexusStage  # noqa: E402
+from claw_compactor.fusion.base import FusionContext  # noqa: E402
+from claw_compactor.fusion.pipeline import FusionPipeline  # noqa: E402
+from claw_compactor.fusion.neurosyntax import Neurosyntax  # noqa: E402
+from claw_compactor.fusion.ionizer import Ionizer  # noqa: E402
+from claw_compactor.fusion.log_crunch import LogCrunch  # noqa: E402
+from claw_compactor.fusion.diff_crunch import DiffCrunch  # noqa: E402
+from claw_compactor.fusion.search_crunch import SearchCrunch  # noqa: E402
+from claw_compactor.fusion.nexus import NexusStage  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # TEST CASE DEFINITIONS

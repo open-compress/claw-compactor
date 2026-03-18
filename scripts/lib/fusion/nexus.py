@@ -14,10 +14,10 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from lib.fusion.base import FusionStage, FusionContext, FusionResult
+from claw_compactor.fusion.base import FusionStage, FusionContext, FusionResult
 
 try:
-    from lib.tokens import estimate_tokens  # type: ignore[import]
+    from claw_compactor.tokens import estimate_tokens  # type: ignore[import]
 except ImportError:  # pragma: no cover — tokens module may not exist yet
     def estimate_tokens(text: str) -> int:  # type: ignore[misc]
         return max(1, len(text.split()))
@@ -34,7 +34,7 @@ except ImportError:
 
 # Import CrunchModel regardless — it has its own graceful stub when torch
 # is absent.  We gate actual instantiation on TORCH_AVAILABLE.
-from lib.fusion.nexus_model import CrunchModel  # noqa: E402
+from claw_compactor.fusion.nexus_model import CrunchModel  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Rule-based fallback constants

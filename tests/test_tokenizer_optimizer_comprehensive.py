@@ -4,7 +4,7 @@ import pytest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-from lib.tokenizer_optimizer import (
+from claw_compactor.tokenizer_optimizer import (
     strip_bold_italic, strip_trivial_backticks, normalize_punctuation,
     compress_table_to_kv, compact_bullets, minimize_whitespace,
     optimize_tokens, estimate_savings,
@@ -200,7 +200,7 @@ class TestOptimizeTokens:
 
     def test_never_increases_tokens(self):
         """Optimization should never make text use more tokens."""
-        from lib.tokens import estimate_tokens
+        from claw_compactor.tokens import estimate_tokens
         texts = [
             "**Bold** and *italic* markers",
             "| Table | Here |\n|-------|------|\n| a | b |",

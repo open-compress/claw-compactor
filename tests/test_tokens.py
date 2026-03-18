@@ -1,6 +1,6 @@
 """Tests for lib.tokens module."""
 
-from lib.tokens import estimate_tokens, using_tiktoken
+from claw_compactor.tokens import estimate_tokens, using_tiktoken
 
 
 class TestEstimateTokens:

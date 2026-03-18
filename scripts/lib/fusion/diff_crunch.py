@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import re
 
-from lib.fusion.base import FusionStage, FusionContext, FusionResult
-from lib.rewind.marker import embed_marker
-from lib.rewind.store import RewindStore
-from lib.tokens import estimate_tokens
+from claw_compactor.fusion.base import FusionStage, FusionContext, FusionResult
+from claw_compactor.rewind.marker import embed_marker
+from claw_compactor.rewind.store import RewindStore
+from claw_compactor.tokens import estimate_tokens
 
 # ---------------------------------------------------------------------------
 # Configuration

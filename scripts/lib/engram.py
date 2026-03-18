@@ -38,9 +38,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from lib.tokens import estimate_tokens
-from lib.engram_storage import EngramStorage
-from lib.engram_prompts import (
+from claw_compactor.tokens import estimate_tokens
+from claw_compactor.engram_storage import EngramStorage
+from claw_compactor.engram_prompts import (
     OBSERVER_SYSTEM_PROMPT,
     REFLECTOR_SYSTEM_PROMPT,
     OBSERVER_USER_TEMPLATE,

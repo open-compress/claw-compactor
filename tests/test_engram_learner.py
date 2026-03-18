@@ -19,7 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from lib.engram_learner import (
+from claw_compactor.engram_learner import (
     EngramLearner,
     FailureEvent,
     CompressionRule,

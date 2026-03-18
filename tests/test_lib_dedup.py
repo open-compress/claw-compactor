@@ -4,7 +4,7 @@ import pytest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-from lib.dedup import _shingles, jaccard, find_duplicates, merge_duplicates
+from claw_compactor.dedup import _shingles, jaccard, find_duplicates, merge_duplicates
 
 
 class TestShingles:

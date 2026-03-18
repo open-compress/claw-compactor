@@ -19,10 +19,15 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from lib.tokens import estimate_tokens
-from lib.markdown import parse_sections
-from lib.exceptions import FileNotFoundError_
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+_scripts_dir = str(Path(__file__).resolve().parent)
+if _scripts_dir not in sys.path:
+    sys.path.insert(0, _scripts_dir)
+from claw_compactor.tokens import estimate_tokens
+from claw_compactor.markdown import parse_sections
+from claw_compactor.exceptions import FileNotFoundError_
 
 logger = logging.getLogger(__name__)
 

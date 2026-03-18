@@ -22,8 +22,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from lib.fusion.neurosyntax import Neurosyntax  # noqa: E402
-from lib.fusion.base import FusionContext, FusionResult  # noqa: E402
+from claw_compactor.fusion.neurosyntax import Neurosyntax  # noqa: E402
+from claw_compactor.fusion.base import FusionContext, FusionResult  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -255,7 +255,7 @@ class TestEdgeCases:
         assert isinstance(result, FusionResult)
 
     def test_is_fusion_stage_subclass(self):
-        from lib.fusion.base import FusionStage
+        from claw_compactor.fusion.base import FusionStage
         assert isinstance(Neurosyntax(), FusionStage)
 
 
@@ -366,9 +366,9 @@ class TestRealWorldSamples:
 # ===========================================================================
 
 def test_cortex_neurosyntax_pipeline():
-    from lib.fusion import FusionPipeline, FusionContext
-    from lib.fusion.cortex import Cortex
-    from lib.fusion.neurosyntax import Neurosyntax
+    from claw_compactor.fusion import FusionPipeline, FusionContext
+    from claw_compactor.fusion.cortex import Cortex
+    from claw_compactor.fusion.neurosyntax import Neurosyntax
 
     pipeline = FusionPipeline([Cortex(), Neurosyntax()])
     ctx = FusionContext(content="```python\n# A pure comment\ndef foo():\n    return 42\n```")

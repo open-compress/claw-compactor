@@ -103,7 +103,7 @@ class TestAuditWorkspace:
         assert isinstance(result, dict)
 
     def test_nonexistent(self):
-        from lib.exceptions import FileNotFoundError_
+        from claw_compactor.exceptions import FileNotFoundError_
         with pytest.raises(FileNotFoundError_):
             audit_workspace("/nonexistent/xyz")
 

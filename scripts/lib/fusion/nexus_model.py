@@ -161,7 +161,7 @@ if TORCH_AVAILABLE:
             return kept
 
 else:
-    # Stub so `from lib.fusion.nexus_model import CrunchModel` always works.
+    # Stub so `from claw_compactor.fusion.nexus_model import CrunchModel` always works.
     class CrunchModel:  # type: ignore[no-redef]
         """Stub — torch is not installed."""
 
