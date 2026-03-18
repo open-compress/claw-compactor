@@ -506,10 +506,6 @@ Pipeline execution time scales with input length, not pipeline depth. Most stage
 
 Gate evaluations are `O(1)` or `O(k)` for small constant `k`. On a 32K-token message where 10 of 14 stages do not fire, the overhead of the non-firing stages is negligible.
 
-### vs. Headroom
-
-Headroom is a competing compression system with approximately 100,000 lines of code. On real SWE-bench tasks, Headroom achieves **0% compression** because it marks all content as protected and compresses nothing. Claw Compactor achieves **12-19% compression on the same tasks**. The difference is the gate-before-compress philosophy: Claw Compactor compresses what is safe to compress rather than protecting everything by default.
-
 ---
 
 ## Repository Layout

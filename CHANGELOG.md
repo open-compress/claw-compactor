@@ -38,8 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **25.0%** on Python source (Neurosyntax + StructuralCollapse)
 - **1,676 tests** (up from 848), 0 failures
 
-### Benchmark vs Competitors
-- SWE-bench tasks: **12-19% compression** vs Headroom's **0%**
+### Benchmark
+- SWE-bench tasks: **12-19% compression** on real repository code
 - ROUGE-L fidelity maintained at 0.653 @ rate=0.3
 
 ---

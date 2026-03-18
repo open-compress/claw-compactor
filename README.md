@@ -100,17 +100,17 @@ Key design principles:
 | Search results | 5.3% | **40.7%** | 7.7x |
 | **Weighted average** | **9.2%** | **53.9%** | **5.9x** |
 
-### SWE-bench Real Tasks (vs Headroom)
+### SWE-bench Real Tasks
 
 Tested on real SWE-bench instances with actual repository code:
 
-| Instance | Size | Claw Compactor | Headroom |
-|:---------|-----:|---------------:|---------:|
-| django__django-11620 | 4.5K | **14.5%** | 0% |
-| sympy__sympy-14396 | 5.5K | **19.1%** | 0% |
-| scikit-learn-25747 | 11.8K | **15.9%** | 0% |
-| scikit-learn-13554 | 73K | **11.8%** | 0% |
-| scikit-learn-25308 | 81K | **14.4%** | 0% |
+| Instance | Size | Compression |
+|:---------|-----:|------------:|
+| django__django-11620 | 4.5K | **14.5%** |
+| sympy__sympy-14396 | 5.5K | **19.1%** |
+| scikit-learn-25747 | 11.8K | **15.9%** |
+| scikit-learn-13554 | 73K | **11.8%** |
+| scikit-learn-25308 | 81K | **14.4%** |
 
 ### vs LLMLingua-2 (ROUGE-L Fidelity)
 
