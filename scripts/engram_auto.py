@@ -929,7 +929,7 @@ class EngramAutoRunner:
         if totals:
             # Show pending token counts per thread
             storage = EngramStorage(self.workspace)
-            from claw_compactor.engram import _count_messages_tokens
+            from claw_compactor.engram_utils import count_messages_tokens as _count_messages_tokens
             print("Thread pending tokens:")
             for tid in sorted(totals.keys()):
                 pending = storage.read_pending(tid)
@@ -967,7 +967,7 @@ def print_status(workspace: Path, engram_cfg: Dict) -> None:
         pending = storage.read_pending(tid)
         obs = storage.read_observations(tid)
         ref = storage.read_reflection(tid)
-        from claw_compactor.engram import _count_messages_tokens
+        from claw_compactor.engram_utils import count_messages_tokens as _count_messages_tokens
         pt = _count_messages_tokens(pending)
         ot = estimate_tokens(obs)
         rt = estimate_tokens(ref)

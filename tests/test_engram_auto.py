@@ -430,7 +430,7 @@ class TestEngramAutoRunner:
 
         runner = EngramAutoRunner(workspace=workspace, engram_cfg=cfg, dry_run=False)
         # Patch _call_llm on the engine to avoid HTTP calls
-        with patch("lib.engram.EngramEngine._call_llm", return_value="fake obs"):
+        with patch("claw_compactor.engram_llm.EngramLLMClient.call", return_value="fake obs"):
             totals = runner.run_once()
 
         from claw_compactor.engram_storage import EngramStorage
@@ -465,7 +465,7 @@ class TestEngramAutoRunner:
         cfg = self._make_cfg(sessions_dir, workspace)
         runner = EngramAutoRunner(workspace=workspace, engram_cfg=cfg, dry_run=False)
 
-        with patch("lib.engram.EngramEngine._call_llm", return_value="fake obs"):
+        with patch("claw_compactor.engram_llm.EngramLLMClient.call", return_value="fake obs"):
             runner.run_once()
 
         # Get pending count after first run
@@ -476,7 +476,7 @@ class TestEngramAutoRunner:
 
         # Run again — should NOT re-ingest
         runner2 = EngramAutoRunner(workspace=workspace, engram_cfg=cfg, dry_run=False)
-        with patch("lib.engram.EngramEngine._call_llm", return_value="fake obs"):
+        with patch("claw_compactor.engram_llm.EngramLLMClient.call", return_value="fake obs"):
             runner2.run_once()
 
         second_counts = {t: len(storage.read_pending(t)) for t in threads}
@@ -520,7 +520,7 @@ class TestEngramAutoRunner:
         cfg["concurrency"]["max_workers"] = 4
 
         runner = EngramAutoRunner(workspace=workspace, engram_cfg=cfg, dry_run=False)
-        with patch("lib.engram.EngramEngine._call_llm", return_value="fake obs"):
+        with patch("claw_compactor.engram_llm.EngramLLMClient.call", return_value="fake obs"):
             runner.run_once()
 
         # Storage should be consistent (no corrupt JSONL)

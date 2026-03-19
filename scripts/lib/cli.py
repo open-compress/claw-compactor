@@ -4,7 +4,7 @@
 import sys
 
 
-def main():
+def main() -> None:
     """Dispatch to mem_compress.py with rewritten arguments."""
     from pathlib import Path
 

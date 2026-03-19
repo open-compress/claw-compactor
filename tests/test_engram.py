@@ -25,10 +25,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 from claw_compactor.engram import (
     EngramEngine,
-    _count_messages_tokens,
-    _messages_to_text,
     MAX_OBSERVER_INPUT_TOKENS,
     MAX_REFLECTOR_INPUT_TOKENS,
+)
+from claw_compactor.engram_utils import (
+    count_messages_tokens as _count_messages_tokens,
+    messages_to_text as _messages_to_text,
 )
 from claw_compactor.engram_storage import EngramStorage
 from claw_compactor.engram_prompts import (
@@ -91,7 +93,7 @@ def _make_engine_with_mock(workspace: Path, mock_response: str, **kwargs) -> Eng
         reflector_threshold=kwargs.get("reflector_threshold", 100),
         anthropic_api_key="test-key",
     )
-    eng._call_llm = MagicMock(return_value=mock_response)  # type: ignore[method-assign]
+    eng.llm.call = MagicMock(return_value=mock_response)  # type: ignore[method-assign]
     return eng
 
 
@@ -474,13 +476,13 @@ class TestLLMRouting:
             openai_api_key="",
         )
         with pytest.raises(RuntimeError, match="no API key"):
-            eng._call_llm("system", "user")
+            eng.llm.call("system", "user")
 
     def test_anthropic_key_calls_anthropic(self, workspace: Path) -> None:
         eng = EngramEngine(workspace_path=workspace, anthropic_api_key="key123")
-        with patch.object(eng, "_call_anthropic", return_value="result") as mock_ant, \
-             patch.object(eng, "_call_openai_compatible", return_value="oai") as mock_oai:
-            result = eng._call_llm("sys", "usr")
+        with patch.object(eng.llm, "_call_anthropic", return_value="result") as mock_ant, \
+             patch.object(eng.llm, "_call_openai_compatible", return_value="oai") as mock_oai:
+            result = eng.llm.call("sys", "usr")
             mock_ant.assert_called_once()
             mock_oai.assert_not_called()
             assert result == "result"
@@ -491,9 +493,9 @@ class TestLLMRouting:
             anthropic_api_key="",
             openai_api_key="oai-key",
         )
-        with patch.object(eng, "_call_anthropic", return_value="ant") as mock_ant, \
-             patch.object(eng, "_call_openai_compatible", return_value="result") as mock_oai:
-            result = eng._call_llm("sys", "usr")
+        with patch.object(eng.llm, "_call_anthropic", return_value="ant") as mock_ant, \
+             patch.object(eng.llm, "_call_openai_compatible", return_value="result") as mock_oai:
+            result = eng.llm.call("sys", "usr")
             mock_oai.assert_called_once()
             mock_ant.assert_not_called()
             assert result == "result"
@@ -504,9 +506,9 @@ class TestLLMRouting:
             anthropic_api_key="ant-key",
             openai_api_key="oai-key",
         )
-        with patch.object(eng, "_call_anthropic", return_value="ant-result") as mock_ant, \
-             patch.object(eng, "_call_openai_compatible", return_value="oai-result") as mock_oai:
-            result = eng._call_llm("sys", "usr")
+        with patch.object(eng.llm, "_call_anthropic", return_value="ant-result") as mock_ant, \
+             patch.object(eng.llm, "_call_openai_compatible", return_value="oai-result") as mock_oai:
+            result = eng.llm.call("sys", "usr")
             mock_ant.assert_called_once()
             mock_oai.assert_not_called()
             assert result == "ant-result"
@@ -673,12 +675,12 @@ class TestEdgeCases:
 # ---------------------------------------------------------------------------
 
 class TestHttpRetry:
-    """_http_post() should retry on transient errors and not retry on 401/403."""
+    """http_post() should retry on transient errors and not retry on 401/403."""
 
     def test_http_retry_on_429(self, workspace: Path) -> None:
         """Should retry on HTTP 429 and eventually succeed."""
         import urllib.error
-        from claw_compactor.engram import _http_post
+        from claw_compactor.engram_http import http_post
 
         call_count = 0
 
@@ -708,10 +710,10 @@ class TestHttpRetry:
 
             return FakeResp()
 
-        with patch("lib.engram._HTTPX_AVAILABLE", False), \
+        with patch("claw_compactor.engram_http._HTTPX_AVAILABLE", False), \
              patch("urllib.request.urlopen", side_effect=fake_urlopen), \
              patch("time.sleep"):  # skip actual delays
-            result = _http_post("http://test", {}, {}, max_retries=3)
+            result = http_post("http://test", {}, {}, max_retries=3)
 
         assert result == {"ok": True}
         assert call_count == 3
@@ -719,7 +721,7 @@ class TestHttpRetry:
     def test_http_no_retry_on_401(self, workspace: Path) -> None:
         """Should raise immediately on HTTP 401 (no retry)."""
         import urllib.error
-        from claw_compactor.engram import _http_post
+        from claw_compactor.engram_http import http_post
 
         call_count = 0
 
@@ -733,11 +735,11 @@ class TestHttpRetry:
             err.read = lambda: b"unauthorized"
             raise err
 
-        with patch("lib.engram._HTTPX_AVAILABLE", False), \
+        with patch("claw_compactor.engram_http._HTTPX_AVAILABLE", False), \
              patch("urllib.request.urlopen", side_effect=fake_urlopen), \
              patch("time.sleep"):
             with pytest.raises(RuntimeError, match="401"):
-                _http_post("http://test", {}, {}, max_retries=3)
+                http_post("http://test", {}, {}, max_retries=3)
 
         # Must have been called exactly once — no retries
         assert call_count == 1
@@ -879,7 +881,7 @@ class TestObserverBatching:
 
     def test_large_batch_multiple_calls(self, workspace: Path) -> None:
         """When total tokens > MAX_OBSERVER_INPUT_TOKENS, multiple LLM calls are made."""
-        from claw_compactor.engram import _count_messages_tokens
+        from claw_compactor.engram_utils import count_messages_tokens as _count_messages_tokens
 
         eng = _make_engine_with_mock(workspace, FAKE_OBSERVATION, observer_threshold=9999)
 
@@ -895,21 +897,21 @@ class TestObserverBatching:
 
         # Patch _count_messages_tokens in engram module to return predictable high values
         import claw_compactor.engram as engram_mod
-        original_count = engram_mod._count_messages_tokens
+        original_count = engram_mod.count_messages_tokens
 
         def fake_count(msgs):
             # Each single message appears to be 60K tokens
             return len(msgs) * 60_000
 
         try:
-            engram_mod._count_messages_tokens = fake_count
+            engram_mod.count_messages_tokens = fake_count
             messages = [
                 {"role": "user", "content": "message content", "timestamp": "12:00"}
                 for _ in range(3)
             ]
             result = eng._run_observer("batch-obs-t2", messages)
         finally:
-            engram_mod._count_messages_tokens = original_count
+            engram_mod.count_messages_tokens = original_count
 
         assert call_count[0] > 1, "Expected multiple LLM calls for large input"
         assert "---" in result, "Combined result should contain batch separator"
@@ -947,20 +949,20 @@ class TestObserverBatching:
         eng._llm_observe = recording_llm_observe  # type: ignore[method-assign]
 
         # Force batching via mock token counter
-        original_count = engram_mod._count_messages_tokens
+        original_count = engram_mod.count_messages_tokens
 
         def fake_count(msgs):
             return len(msgs) * 60_000
 
         try:
-            engram_mod._count_messages_tokens = fake_count
+            engram_mod.count_messages_tokens = fake_count
             messages = [
                 {"role": "user", "content": f"Message {i}", "timestamp": "12:00"}
                 for i in range(3)
             ]
             eng._run_observer("batch-obs-t4", messages)
         finally:
-            engram_mod._count_messages_tokens = original_count
+            engram_mod.count_messages_tokens = original_count
 
         saved = eng.storage.read_observations("batch-obs-t4")
         for resp in batch_responses:
@@ -982,17 +984,17 @@ class TestObserverBatching:
         eng._llm_observe = counting_llm_observe  # type: ignore[method-assign]
 
         # Patch token counter so single message appears to be 200K tokens
-        original_count = engram_mod._count_messages_tokens
+        original_count = engram_mod.count_messages_tokens
 
         def fake_count(msgs):
             return len(msgs) * 200_000
 
         try:
-            engram_mod._count_messages_tokens = fake_count
+            engram_mod.count_messages_tokens = fake_count
             huge_message = {"role": "user", "content": "Large content", "timestamp": "12:00"}
             result = eng._run_observer("batch-obs-t5", [huge_message])
         finally:
-            engram_mod._count_messages_tokens = original_count
+            engram_mod.count_messages_tokens = original_count
 
         assert call_count[0] == 1, "Single oversized message should produce exactly one call"
         assert result == "oversized-observation"
