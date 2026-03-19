@@ -11,6 +11,7 @@ still testing the store and marker modules which are present.
 import sys
 import time
 from pathlib import Path
+from typing import Optional, Tuple
 
 import pytest
 
@@ -489,12 +490,12 @@ class TestRewindToolDef:
 
 @requires_retriever
 class TestHandleRewind:
-    def _make_store_with_content(self, content: str) -> tuple[RewindStore, str]:
+    def _make_store_with_content(self, content: str) -> Tuple[RewindStore, str]:
         store = RewindStore()
         hash_id = store.store(content, "compressed")
         return store, hash_id
 
-    def _call(self, store: RewindStore, hash_id: str, keywords: list | None = None) -> dict:
+    def _call(self, store: RewindStore, hash_id: str, keywords: Optional[list] = None) -> dict:
         """Build a tool_call dict and invoke handle_rewind."""
         args: dict = {"hash_id": hash_id}
         if keywords is not None:

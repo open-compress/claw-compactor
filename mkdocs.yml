@@ -34,7 +34,7 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
-  - admonitions
+  - admonition
   - tables
   - toc:
       permalink: true
