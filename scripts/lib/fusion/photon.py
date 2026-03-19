@@ -51,7 +51,7 @@ _PNG_JPEG_QUALITY = 85
 
 # Regex: match a full data-URI base64 payload
 _DATA_URI_RE = re.compile(
-    r"data:image/(?P<fmt>[a-zA-Z0-9+.\-]+);base64,(?P<b64>[A-Za-z0-9+/=\s]+)"
+    r"data:image/(?P<fmt>[a-zA-Z0-9+.\-]+);base64,(?P<b64>[A-Za-z0-9+/=]+)"
 )
 
 # OpenAI "detail" field values
