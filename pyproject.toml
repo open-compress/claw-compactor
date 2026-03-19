@@ -1,6 +1,6 @@
 [project]
 name = "claw-compactor"
-version = "7.0.2"
+version = "7.1.0"
 description = "14-stage Fusion Pipeline for LLM token compression — 15-82% reduction depending on content, zero LLM inference cost, reversible compression, AST-aware code analysis"
 license = "MIT"
 requires-python = ">=3.9"

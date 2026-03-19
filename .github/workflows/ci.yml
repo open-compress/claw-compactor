@@ -67,6 +67,7 @@ jobs:
 
       - name: Deploy badge to gist
         if: matrix.python-version == '3.12' && github.ref == 'refs/heads/main'
+        continue-on-error: true
         uses: schneegans/dynamic-badges-action@v1.7.0
         with:
           auth: ${{ secrets.GIST_TOKEN }}
