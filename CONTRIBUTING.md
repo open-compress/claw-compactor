@@ -49,6 +49,24 @@ git checkout -b feat/your-feature-name
 
 ### 4. Test Your Changes
 
+Run the full test suite:
+
+```bash
+pytest tests/ -x -q
+```
+
+Run a specific test file:
+
+```bash
+pytest tests/test_pipeline.py -v
+```
+
+Run tests matching a keyword:
+
+```bash
+pytest tests/ -k "compression" -v
+```
+
 ```bash
 # Run the full test suite
 pytest tests/ -x -q
