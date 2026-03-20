@@ -41,6 +41,8 @@ def _lcs_length(a: list[str], b: list[str]) -> int:
     """Compute LCS length using DP (O(m*n) time, O(min(m,n)) space)."""
     if not a or not b:
         return 0
+    if a == b:
+        return len(a)
     m, n = len(a), len(b)
     # Use shorter list as columns for space efficiency
     if m < n:
@@ -104,7 +106,7 @@ def extract_keywords(text: str, top_n: int = 30) -> list[str]:
         "been", "being", "have", "has", "had", "do", "does", "did", "will",
         "would", "should", "could", "can", "may", "might", "shall", "this",
         "that", "these", "those", "i", "you", "we", "they", "it", "he", "she",
-        "my", "your", "our", "their", "its", "your", "which", "who", "what",
+        "my", "your", "our", "their", "its", "which", "who", "what",
         "when", "where", "how", "why", "if", "as", "so", "not", "no", "also",
         "just", "then", "than", "more", "most", "very", "too", "all", "any",
         "each", "few", "more", "both", "only", "same", "other", "such",
