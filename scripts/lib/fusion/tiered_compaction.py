@@ -11,7 +11,7 @@ Levels
   auto   — Medium. Tool result truncation + conversation summarization.
            Fires when context is 80-95% full.
   full   — Aggressive. Everything above + per-message Fusion Pipeline
-           compression + file re-injection.
+           compression + file re-injection + plan/task/skill re-injection.
            Fires when context is >95% full.
 
 The module also includes a CircuitBreaker that disables compaction after
@@ -19,15 +19,22 @@ MAX_CONSECUTIVE_FAILURES consecutive failures (default 3), preventing
 infinite retry loops (the same bug Claude Code discovered wasting 250K
 API calls/day globally).
 
+Environment Variables
+---------------------
+  CLAW_AUTOCOMPACT_PCT_OVERRIDE
+      Override the micro compaction threshold (default 0.60).
+      Set to a float between 0 and 1, e.g., ``0.70`` to trigger at 70%.
+
 Part of claw-compactor v8. License: MIT.
 """
 from __future__ import annotations
 
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 from claw_compactor.tokens import estimate_tokens
 
@@ -56,6 +63,29 @@ FILE_REINJECTION_TOTAL = 30_000
 
 # Post-full-compaction target budget.
 POST_COMPACT_BUDGET = 50_000
+
+# Environment variable to override compaction trigger percentage.
+_ENV_OVERRIDE_KEY = "CLAW_AUTOCOMPACT_PCT_OVERRIDE"
+
+
+def _get_pct_override() -> Optional[float]:
+    """Read CLAW_AUTOCOMPACT_PCT_OVERRIDE from environment."""
+    val = os.environ.get(_ENV_OVERRIDE_KEY)
+    if val is not None:
+        try:
+            pct = float(val)
+            if 0.0 < pct <= 1.0:
+                return pct
+            logger.warning(
+                "%s must be between 0 and 1, got %s - ignoring",
+                _ENV_OVERRIDE_KEY, val,
+            )
+        except ValueError:
+            logger.warning(
+                "%s is not a valid float: %s - ignoring",
+                _ENV_OVERRIDE_KEY, val,
+            )
+    return None
 
 
 @dataclass
@@ -145,11 +175,20 @@ class FileAccessTracker:
 def determine_level(
     messages: list[dict[str, Any]],
     token_budget: int = 200_000,
-    micro_pct: float = MICRO_THRESHOLD,
+    micro_pct: Optional[float] = None,
     auto_pct: float = AUTO_THRESHOLD,
     full_pct: float = FULL_THRESHOLD,
 ) -> CompactionLevel:
-    """Determine the compaction level needed based on current token usage."""
+    """Determine the compaction level needed based on current token usage.
+
+    The micro threshold can be overridden by:
+    1. The ``micro_pct`` parameter (highest priority)
+    2. The ``CLAW_AUTOCOMPACT_PCT_OVERRIDE`` environment variable
+    3. The default ``MICRO_THRESHOLD`` (0.60)
+    """
+    if micro_pct is None:
+        micro_pct = _get_pct_override() or MICRO_THRESHOLD
+
     total_tokens = _count_message_tokens(messages)
     ratio = total_tokens / token_budget if token_budget > 0 else 0
 
@@ -165,10 +204,15 @@ def determine_level(
 def compact(
     messages: list[dict[str, Any]],
     token_budget: int = 200_000,
-    circuit_breaker: CircuitBreaker | None = None,
-    file_tracker: FileAccessTracker | None = None,
-    fusion_engine: Any | None = None,
-    level_override: CompactionLevel | None = None,
+    circuit_breaker: Optional[CircuitBreaker] = None,
+    file_tracker: Optional[FileAccessTracker] = None,
+    fusion_engine: Any = None,
+    level_override: Optional[CompactionLevel] = None,
+    hook_registry: Any = None,
+    plan_tracker: Any = None,
+    skill_tracker: Any = None,
+    llm_summarizer: Any = None,
+    strip_images: bool = True,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Apply tiered compaction to a message list.
 
@@ -186,6 +230,16 @@ def compact(
         Optional FusionEngine for per-message compression in FULL mode.
     level_override:
         Force a specific compaction level (for testing).
+    hook_registry:
+        Optional HookRegistry for pre/post compaction hooks.
+    plan_tracker:
+        Optional PlanTaskTracker for plan/task re-injection.
+    skill_tracker:
+        Optional SkillSchemaTracker for skill schema re-injection.
+    llm_summarizer:
+        Optional LLMSummarizer for API-based summarization.
+    strip_images:
+        Whether to strip images before summarization (default True).
 
     Returns
     -------
@@ -194,6 +248,7 @@ def compact(
     # Import here to avoid circular imports.
     from claw_compactor.fusion.tool_result_budget import budget_tool_results
     from claw_compactor.fusion.conversation_summarizer import summarize_conversation
+    from claw_compactor.fusion.content_stripper import strip_images_and_docs
 
     if circuit_breaker and circuit_breaker.disabled:
         return messages, {
@@ -213,24 +268,63 @@ def compact(
     try:
         result_messages = list(messages)
 
+        # --- Pre-compact hooks ---
+        if hook_registry is not None:
+            from claw_compactor.fusion.compact_hooks import HookPhase
+            result_messages, hook_stats = hook_registry.run_hooks(
+                HookPhase.PRE_COMPACT, result_messages,
+                token_budget=token_budget, level=level,
+            )
+            stats["pre_compact_hooks"] = hook_stats
+
         # Level 1: Micro — tool result truncation.
         if level in (CompactionLevel.MICRO, CompactionLevel.AUTO, CompactionLevel.FULL):
+            if hook_registry is not None:
+                result_messages, _ = hook_registry.run_hooks(
+                    HookPhase.PRE_BUDGET, result_messages,
+                )
             result_messages, tool_stats = budget_tool_results(result_messages)
             stats["tool_budget"] = tool_stats
+            if hook_registry is not None:
+                result_messages, _ = hook_registry.run_hooks(
+                    HookPhase.POST_BUDGET, result_messages,
+                )
 
-        # Level 2: Auto — conversation summarization.
+        # Level 2: Auto — image stripping + conversation summarization.
         if level in (CompactionLevel.AUTO, CompactionLevel.FULL):
-            result_messages, summ_stats = summarize_conversation(
-                result_messages, token_budget=token_budget
-            )
+            # Strip images/docs before summarization.
+            if strip_images:
+                result_messages, strip_stats = strip_images_and_docs(result_messages)
+                stats["content_stripping"] = strip_stats
+
+            if hook_registry is not None:
+                result_messages, _ = hook_registry.run_hooks(
+                    HookPhase.PRE_SUMMARIZE, result_messages,
+                )
+
+            # Use LLM summarizer if available, otherwise deterministic.
+            if llm_summarizer is not None:
+                result_messages, summ_stats = llm_summarizer.summarize(
+                    result_messages, token_budget=token_budget
+                )
+            else:
+                result_messages, summ_stats = summarize_conversation(
+                    result_messages, token_budget=token_budget
+                )
             stats["summarization"] = summ_stats
 
+            if hook_registry is not None:
+                result_messages, _ = hook_registry.run_hooks(
+                    HookPhase.POST_SUMMARIZE, result_messages,
+                )
+
         # Level 3: Full — per-message Fusion Pipeline compression.
-        if level == CompactionLevel.FULL and fusion_engine is not None:
-            result_messages, fusion_stats = _apply_fusion_compression(
-                result_messages, fusion_engine
-            )
-            stats["fusion"] = fusion_stats
+        if level == CompactionLevel.FULL:
+            if fusion_engine is not None:
+                result_messages, fusion_stats = _apply_fusion_compression(
+                    result_messages, fusion_engine
+                )
+                stats["fusion"] = fusion_stats
 
             # File re-injection.
             if file_tracker:
@@ -239,6 +333,28 @@ def compact(
                     injection_msg = _build_file_injection_message(recent_files)
                     result_messages.append(injection_msg)
                     stats["files_reinjected"] = len(recent_files)
+
+            # Plan/task re-injection.
+            if plan_tracker is not None:
+                plan_msg = plan_tracker.build_injection_message()
+                if plan_msg is not None:
+                    result_messages.append(plan_msg)
+                    stats["plans_reinjected"] = True
+
+            # Skill schema re-injection.
+            if skill_tracker is not None:
+                skill_msg = skill_tracker.build_injection_message()
+                if skill_msg is not None:
+                    result_messages.append(skill_msg)
+                    stats["skills_reinjected"] = True
+
+        # --- Post-compact hooks ---
+        if hook_registry is not None:
+            result_messages, hook_stats = hook_registry.run_hooks(
+                HookPhase.POST_COMPACT, result_messages,
+                token_budget=token_budget, level=level,
+            )
+            stats["post_compact_hooks"] = hook_stats
 
         stats["tokens_after"] = _count_message_tokens(result_messages)
         stats["tokens_saved"] = stats["tokens_before"] - stats["tokens_after"]

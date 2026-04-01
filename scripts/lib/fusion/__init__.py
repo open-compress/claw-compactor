@@ -56,3 +56,21 @@ __all__ += [
     "compact",
     "determine_level",
 ]
+
+# v8.1: Additional Claude Code-inspired features
+from claw_compactor.fusion.llm_summarizer import LLMSummarizer
+from claw_compactor.fusion.plan_reinjection import PlanTaskTracker
+from claw_compactor.fusion.skill_reinjection import SkillSchemaTracker
+from claw_compactor.fusion.compact_hooks import HookRegistry, HookPhase
+from claw_compactor.fusion.content_stripper import strip_images_and_docs
+from claw_compactor.fusion.cache_prefix import CachePrefixManager
+
+__all__ += [
+    "LLMSummarizer",
+    "PlanTaskTracker",
+    "SkillSchemaTracker",
+    "HookRegistry",
+    "HookPhase",
+    "strip_images_and_docs",
+    "CachePrefixManager",
+]
