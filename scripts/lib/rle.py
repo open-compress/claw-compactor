@@ -88,9 +88,11 @@ def decompress_ip_families(text: str, prefix_map: Dict[str, str]) -> str:
         return text
     result = text
     for label, prefix in prefix_map.items():
-        # Match $IPn.suffix patterns
-        pattern = re.compile(re.escape(label) + r'\.(\d{1,3})')
-        result = pattern.sub(lambda m: prefix + m.group(1), result)
+        result = re.sub(
+            re.escape(label) + r'\.(\d{1,3})',
+            lambda m, p=prefix: p + m.group(1),
+            result,
+        )
     return result
 
 

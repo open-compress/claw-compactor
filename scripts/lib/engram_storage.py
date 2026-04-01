@@ -41,6 +41,8 @@ class EngramStorage:
 
     def _thread_dir(self, thread_id: str) -> Path:
         """Return (and create) the directory for a thread."""
+        if not thread_id or "/" in thread_id or "\\" in thread_id or ".." in thread_id:
+            raise ValueError(f"Invalid thread_id: {thread_id!r}")
         d = self.base_path / "memory" / "engram" / thread_id
         d.mkdir(parents=True, exist_ok=True)
         return d
@@ -178,8 +180,16 @@ class EngramStorage:
         self._update_meta(thread_id, pending_count=0)
 
     def pending_count(self, thread_id: str) -> int:
-        """Return the number of pending messages."""
-        return len(self.read_pending(thread_id))
+        """Return the number of pending messages (counts lines without parsing)."""
+        path = self._pending_path(thread_id)
+        if not path.exists():
+            return 0
+        count = 0
+        with path.open("r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    count += 1
+        return count
 
     # ------------------------------------------------------------------
     # Metadata

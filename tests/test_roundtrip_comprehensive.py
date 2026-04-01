@@ -18,8 +18,8 @@ class TestDictionaryRoundtrip:
             "The server at 192.168.1.100 runs Python 3.11. "
             "The server at 192.168.1.100 handles requests. "
             "Python 3.11 is the main runtime. "
-            "The workspace at /Users/duke/workspace contains files. "
-            "/Users/duke/workspace has memory files.",
+            "The workspace at /Users/testuser/workspace contains files. "
+            "/Users/testuser/workspace has memory files.",
         ]
         return build_codebook(texts)
 
@@ -82,21 +82,21 @@ class TestRLERoundtrip:
     """RLE/path compression must be reversible."""
 
     def test_path_roundtrip(self):
-        ws = "/Users/duke/workspace"
+        ws = "/Users/testuser/workspace"
         original = f"File at {ws}/memory/test.md and {ws}/TOOLS.md"
         compressed = compress_paths(original, [ws])
         decompressed = decompress_paths(compressed, ws)
         assert decompressed == original
 
     def test_path_no_match(self):
-        ws = "/Users/duke/workspace"
+        ws = "/Users/testuser/workspace"
         original = "No paths here at all"
         compressed = compress_paths(original, [ws])
         decompressed = decompress_paths(compressed, ws)
         assert decompressed == original
 
     def test_path_empty(self):
-        ws = "/Users/duke/workspace"
+        ws = "/Users/testuser/workspace"
         assert decompress_paths(compress_paths("", [ws]), ws) == ""
 
     def test_ip_roundtrip(self):
@@ -122,7 +122,7 @@ class TestRLERoundtrip:
         assert decompress_ip_families(compressed, prefix_map) == ""
 
     def test_mixed_content_roundtrip(self):
-        ws = "/Users/duke/workspace"
+        ws = "/Users/testuser/workspace"
         original = (
             f"Server at 192.168.1.100 runs on {ws}/scripts/main.py.\n"
             f"Backup at 192.168.1.200 uses {ws}/memory/backup.md.\n"
@@ -157,7 +157,7 @@ class TestCombinedRoundtrip:
         assert dict_back == original
 
     def test_rle_then_dict_roundtrip(self):
-        ws = "/Users/duke/workspace"
+        ws = "/Users/testuser/workspace"
         texts = [f"{ws}/memory/test.md appears often. {ws}/memory/test.md again."]
         codebook = build_codebook(texts)
         original = f"Check {ws}/memory/test.md for details"

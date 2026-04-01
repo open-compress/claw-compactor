@@ -7,7 +7,8 @@ llm:
   provider: openai-compatible
 
   # Base URL for OpenAI-compatible endpoint (ignored if provider=anthropic)
-  base_url: http://localhost:8403
+  # Local development only — use https:// in production
+  base_url: http://localhost:8080
 
   # Name of the environment variable that holds the API key
   api_key_env: OPENAI_API_KEY

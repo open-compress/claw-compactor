@@ -86,7 +86,7 @@ class TestExtractIPPrefixes:
 
 class TestExtractPathPrefixes:
     def test_basic(self):
-        texts = ["/Users/duke/workspace/a.md /Users/duke/workspace/b.md"]
+        texts = ["/Users/testuser/workspace/a.md /Users/testuser/workspace/b.md"]
         result = _extract_path_prefixes(texts)
         assert isinstance(result, dict)
 

@@ -14,20 +14,20 @@ from claw_compactor.rle import (
 
 class TestCompressPaths:
     def test_basic(self):
-        ws = "/Users/duke/workspace"
+        ws = "/Users/testuser/workspace"
         text = f"File at {ws}/memory/test.md"
         result = compress_paths(text, [ws])
         assert "$WS" in result or ws not in result or result == text
 
     def test_multiple_paths(self):
-        ws = "/Users/duke/workspace"
+        ws = "/Users/testuser/workspace"
         text = f"{ws}/a.md and {ws}/b.md and {ws}/c.md"
         result = compress_paths(text, [ws])
         assert isinstance(result, str)
 
     def test_no_match(self):
         text = "no paths here"
-        result = compress_paths(text, ["/Users/duke/workspace"])
+        result = compress_paths(text, ["/Users/testuser/workspace"])
         assert result == text
 
     def test_empty(self):
@@ -113,8 +113,8 @@ class TestCompress:
     """Test the main compress() function."""
 
     def test_basic(self):
-        text = "Some text with /Users/duke/workspace/file.md"
-        result = compress(text, ["/Users/duke/workspace"])
+        text = "Some text with /Users/testuser/workspace/file.md"
+        result = compress(text, ["/Users/testuser/workspace"])
         assert isinstance(result, str)
 
     def test_empty(self):
@@ -137,7 +137,7 @@ class TestCompress:
 
 class TestDecompress:
     def test_basic_roundtrip(self):
-        ws = "/Users/duke/workspace"
+        ws = "/Users/testuser/workspace"
         text = f"{ws}/test.md"
         compressed = compress(text, [ws])
         decompressed = decompress(compressed, ws)

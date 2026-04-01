@@ -19,7 +19,7 @@ class TestShingles:
         assert len(_shingles("hi")) == 1
 
     def test_empty(self):
-        assert len(_shingles("")) == 1
+        assert len(_shingles("")) == 0
 
 
 class TestJaccard:

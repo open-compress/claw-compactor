@@ -11,6 +11,7 @@ Part of claw-compactor. License: MIT.
 
 import re
 import logging
+from functools import lru_cache
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -23,8 +24,10 @@ try:
     _encoder = tiktoken.encoding_for_model("gpt-4")
     _tiktoken_available = True
     logger.debug("tiktoken available, using cl100k_base encoding")
-except (ImportError, Exception):
-    logger.debug("tiktoken unavailable, using CJK-aware heuristic")
+except ImportError:
+    logger.debug("tiktoken not installed, using CJK-aware heuristic")
+except Exception as exc:
+    logger.warning("tiktoken failed to initialize: %s; using heuristic", exc)
 
 CHARS_PER_TOKEN = 4  # fallback for ASCII text
 CJK_CHARS_PER_TOKEN = 1.5  # CJK characters average ~1.5 chars/token
@@ -57,6 +60,12 @@ def _heuristic_tokens(text: str) -> int:
     return max(1, int(cjk_tokens + other_tokens))
 
 
+@lru_cache(maxsize=256)
+def _tiktoken_count(text: str) -> int:
+    """Cached tiktoken encoding — avoids re-tokenizing the same text."""
+    return len(_encoder.encode(text))
+
+
 def estimate_tokens(text: str) -> int:
     """Estimate the number of tokens in *text*.
 
@@ -69,7 +78,7 @@ def estimate_tokens(text: str) -> int:
     if not text:
         return 0
     if _tiktoken_available and _encoder is not None:
-        return len(_encoder.encode(text))
+        return _tiktoken_count(text)
     return _heuristic_tokens(text)
 
 

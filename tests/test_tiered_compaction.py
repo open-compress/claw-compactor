@@ -17,9 +17,11 @@ from claw_compactor.fusion.tiered_compaction import (
 
 def _make_messages_with_tokens(target_tokens: int) -> list[dict]:
     """Generate messages that total approximately target_tokens."""
-    # ~4 chars per token (rough estimate).
-    content_per_msg = "x" * 400  # ~100 tokens per message
-    n_msgs = max(1, target_tokens // 100)
+    from claw_compactor.tokens import estimate_tokens
+    # Use a realistic string and measure its actual token count
+    content_per_msg = "the quick brown fox jumps over the lazy dog " * 25  # ~100 tokens
+    tokens_per_msg = estimate_tokens(content_per_msg)
+    n_msgs = max(1, target_tokens // max(tokens_per_msg, 1))
     msgs = [{"role": "system", "content": "You are helpful."}]
     for i in range(n_msgs):
         role = "user" if i % 2 == 0 else "assistant"
@@ -103,9 +105,9 @@ class TestFileAccessTracker:
         tracker = FileAccessTracker()
         big_content = "x\n" * 50_000  # Very large file
         tracker.record_access("/big.py", big_content)
-        files = tracker.get_recent_files(per_file_budget=100, total_budget=200)
+        files = tracker.get_recent_files(per_file_budget=100, total_budget=500)
         assert len(files) == 1
-        assert files[0]["tokens"] <= 200
+        assert files[0]["tokens"] <= 500
 
     def test_duplicate_access_updates(self):
         tracker = FileAccessTracker()

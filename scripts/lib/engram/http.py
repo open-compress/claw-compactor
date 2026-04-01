@@ -1,8 +1,8 @@
 """
-engram_http.py — HTTP POST helper with retry logic for Engram LLM calls.
+engram/http.py — HTTP POST helper with retry logic for LLM API calls.
 
-Prefers httpx when available, falls back to stdlib urllib.
-Part of claw-compactor / Engram layer. License: MIT.
+Supports httpx (preferred) with stdlib urllib fallback.
+Retries transient errors with exponential back-off.
 """
 
 from __future__ import annotations
@@ -10,8 +10,8 @@ from __future__ import annotations
 import json
 import logging
 import time
-import urllib.error
 import urllib.request
+import urllib.error
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -26,6 +26,7 @@ except ImportError:
     _httpx = None  # type: ignore[assignment]
     _HTTPX_AVAILABLE = False
 
+
 # HTTP status codes that should not be retried (client errors)
 _NO_RETRY_CODES = {400, 401, 403}
 # HTTP status codes that are transient and worth retrying
@@ -35,7 +36,7 @@ _RETRY_EXCEPTIONS = (ConnectionError, ConnectionResetError, TimeoutError,
                      urllib.error.URLError)
 
 
-def http_post(url: str, headers: dict, body: dict, max_retries: int = 3) -> dict:
+def _http_post(url: str, headers: dict, body: dict, max_retries: int = 3) -> dict:
     """
     POST JSON body to *url* and return parsed JSON response.
 
@@ -58,50 +59,43 @@ def http_post(url: str, headers: dict, body: dict, max_retries: int = 3) -> dict
     payload = json.dumps(body, ensure_ascii=False).encode("utf-8")
 
     if _HTTPX_AVAILABLE and _httpx is not None:
-        return _post_httpx(url, headers, payload, max_retries)
+        last_exc: Optional[Exception] = None
+        with _httpx.Client(timeout=120.0) as client:
+            for attempt in range(max_retries + 1):
+                try:
+                    resp = client.post(url, headers=headers, content=payload)
+                    if resp.status_code in _NO_RETRY_CODES:
+                        raise RuntimeError(
+                            f"Engram HTTP {resp.status_code} from {url}: {resp.text[:200]}"
+                        )
+                    if resp.status_code in _RETRY_CODES and attempt < max_retries:
+                        delay = 2 ** (attempt + 1)
+                        logger.warning(
+                            "Engram HTTP %d, retry %d/%d in %ds…",
+                            resp.status_code, attempt + 1, max_retries, delay,
+                        )
+                        time.sleep(delay)
+                        last_exc = RuntimeError(
+                            f"Engram HTTP {resp.status_code} from {url}"
+                        )
+                        continue
+                    resp.raise_for_status()
+                    return resp.json()
+                except _RETRY_EXCEPTIONS as exc:
+                    last_exc = exc
+                    if attempt < max_retries:
+                        delay = 2 ** (attempt + 1)
+                        logger.warning(
+                            "Engram network error (%s), retry %d/%d in %ds…",
+                            exc, attempt + 1, max_retries, delay,
+                        )
+                        time.sleep(delay)
+                    else:
+                        raise
+        raise last_exc or RuntimeError(f"Engram: max retries exceeded for {url}")
 
-    return _post_urllib(url, headers, payload, max_retries)
-
-
-def _post_httpx(url: str, headers: dict, payload: bytes, max_retries: int) -> dict:
-    last_exc: Optional[Exception] = None
-    with _httpx.Client(timeout=120.0) as client:
-        for attempt in range(max_retries + 1):
-            try:
-                resp = client.post(url, headers=headers, content=payload)
-                if resp.status_code in _NO_RETRY_CODES:
-                    raise RuntimeError(
-                        f"Engram HTTP {resp.status_code} from {url}: {resp.text[:200]}"
-                    )
-                if resp.status_code in _RETRY_CODES and attempt < max_retries:
-                    delay = 2 ** (attempt + 1)
-                    logger.warning(
-                        "Engram HTTP %d, retry %d/%d in %ds…",
-                        resp.status_code, attempt + 1, max_retries, delay,
-                    )
-                    time.sleep(delay)
-                    last_exc = RuntimeError(
-                        f"Engram HTTP {resp.status_code} from {url}"
-                    )
-                    continue
-                resp.raise_for_status()
-                return resp.json()
-            except _RETRY_EXCEPTIONS as exc:
-                last_exc = exc
-                if attempt < max_retries:
-                    delay = 2 ** (attempt + 1)
-                    logger.warning(
-                        "Engram network error (%s), retry %d/%d in %ds…",
-                        exc, attempt + 1, max_retries, delay,
-                    )
-                    time.sleep(delay)
-                else:
-                    raise
-    raise last_exc or RuntimeError(f"Engram: max retries exceeded for {url}")
-
-
-def _post_urllib(url: str, headers: dict, payload: bytes, max_retries: int) -> dict:
-    last_exc: Optional[Exception] = None
+    # Fallback: stdlib urllib
+    last_exc2: Optional[Exception] = None
     for attempt in range(max_retries + 1):
         req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
         try:
@@ -121,14 +115,14 @@ def _post_urllib(url: str, headers: dict, payload: bytes, max_retries: int) -> d
                     exc.code, attempt + 1, max_retries, delay,
                 )
                 time.sleep(delay)
-                last_exc = exc
+                last_exc2 = exc
                 continue
             body_text = exc.read().decode("utf-8", errors="replace")[:200]
             raise RuntimeError(
                 f"Engram HTTP {exc.code} from {url}: {body_text}"
             ) from exc
         except _RETRY_EXCEPTIONS as exc:
-            last_exc = exc
+            last_exc2 = exc
             if attempt < max_retries:
                 delay = 2 ** (attempt + 1)
                 logger.warning(
@@ -138,4 +132,4 @@ def _post_urllib(url: str, headers: dict, payload: bytes, max_retries: int) -> d
                 time.sleep(delay)
             else:
                 raise
-    raise last_exc or RuntimeError(f"Engram: max retries exceeded for {url}")
+    raise last_exc2 or RuntimeError(f"Engram: max retries exceeded for {url}")

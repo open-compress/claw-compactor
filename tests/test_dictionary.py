@@ -111,12 +111,12 @@ class TestExtractIpPrefixes:
 class TestExtractPathPrefixes:
     def test_finds_common_path(self):
         texts = [
-            "File at /Users/duke/.openclaw/workspace/MEMORY.md",
-            "Also /Users/duke/.openclaw/workspace/TOOLS.md",
-            "And /Users/duke/.openclaw/workspace/memory/2026-01.md",
+            "File at /Users/testuser/.openclaw/workspace/MEMORY.md",
+            "Also /Users/testuser/.openclaw/workspace/TOOLS.md",
+            "And /Users/testuser/.openclaw/workspace/memory/2026-01.md",
         ]
         prefixes = _extract_path_prefixes(texts)
-        assert any("/Users/duke/.openclaw" in p for p in prefixes)
+        assert any("/Users/testuser/.openclaw" in p for p in prefixes)
 
     def test_no_paths(self):
         assert _extract_path_prefixes(["no paths"]) == {}

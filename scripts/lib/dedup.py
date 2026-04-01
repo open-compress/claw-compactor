@@ -26,7 +26,7 @@ def _shingles(text: str, k: int = SHINGLE_SIZE) -> Set[int]:
     """
     words = text.split()
     if not words:
-        return {hash("")}
+        return set()
     if len(words) < k:
         return {hash(' '.join(words))}
     result: Set[int] = set()
@@ -47,7 +47,7 @@ def jaccard(a: Set[int], b: Set[int]) -> float:
     if not a or not b:
         return 0.0
     intersection = len(a & b)
-    union = len(a | b)
+    union = len(a) + len(b) - intersection
     return intersection / union if union else 0.0
 
 
@@ -83,6 +83,7 @@ def find_duplicates(
             sim = jaccard(shingle_sets[i], shingle_sets[j])
             if sim >= threshold:
                 group_indices.append(j)
+                used.add(j)
                 total_sim += sim
                 count += 1
         if len(group_indices) > 1:

@@ -18,8 +18,6 @@ logger = logging.getLogger(__name__)
 
 # Code format: $AA .. $ZZ (676 slots), then $AAA.. if needed
 _CODE_RE = re.compile(r'\$[A-Z]{2,3}')
-# Reserved: don't compress things that already look like codes
-_RESERVED_RE = re.compile(r'\$[A-Z]{2,3}')
 
 # Min occurrences for a phrase to be codebook-worthy
 MIN_FREQ = 3
@@ -194,6 +192,8 @@ def compress_text(text: str, codebook: Dict[str, str]) -> str:
     for code, phrase in sorted(normalized.items(), key=lambda x: -len(x[1])):
         escaped_phrase = phrase.replace("$", _DOLLAR_ESCAPE)
         result = result.replace(escaped_phrase, code)
+    # Restore pre-existing '$' that were not part of any codebook phrase
+    result = result.replace(_DOLLAR_ESCAPE, "$")
     return result
 
 

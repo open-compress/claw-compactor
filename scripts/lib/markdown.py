@@ -32,6 +32,15 @@ _HEADER_RE = re.compile(r'^(#{1,6})\s+(.*)', re.MULTILINE)
 # Table separator line
 _TABLE_SEP_RE = re.compile(r'^[\s|:\-]+$')
 
+# Redundant blank lines
+_BLANK_LINES_RE = re.compile(r'\n{3,}')
+
+# Multiple spaces
+_MULTI_SPACE_RE = re.compile(r'  +')
+
+# Bullet line
+_BULLET_RE = re.compile(r'^(\s*[-*+]\s+)(.*)')
+
 
 def parse_sections(text: str) -> List[Tuple[str, str, int]]:
     """Parse *text* into sections delimited by markdown headers.
@@ -73,8 +82,7 @@ def strip_markdown_redundancy(text: str) -> str:
     """Remove excessive blank lines and trailing whitespace."""
     if not text:
         return ""
-    # Collapse 3+ consecutive blank lines to 2
-    text = re.sub(r'\n{3,}', '\n\n', text)
+    text = _BLANK_LINES_RE.sub('\n\n', text)
     # Strip trailing whitespace per line
     lines = [line.rstrip() for line in text.split('\n')]
     return '\n'.join(lines).strip()
@@ -113,8 +121,7 @@ def strip_emoji(text: str) -> str:
     if not text:
         return ""
     result = _EMOJI_RE.sub('', text)
-    # Collapse multiple spaces left by emoji removal
-    result = re.sub(r'  +', ' ', result)
+    result = _MULTI_SPACE_RE.sub(' ', result)
     return result
 
 
@@ -218,7 +225,6 @@ def merge_similar_bullets(text: str, threshold: float = 0.80) -> str:
         return ""
 
     lines = text.split('\n')
-    bullet_re = re.compile(r'^(\s*[-*+]\s+)(.*)')
     result: List[str] = []
     bullets: List[Tuple[str, str, str]] = []  # (prefix, content, full_line)
 
@@ -247,7 +253,7 @@ def merge_similar_bullets(text: str, threshold: float = 0.80) -> str:
         bullets.clear()
 
     for line in lines:
-        m = bullet_re.match(line)
+        m = _BULLET_RE.match(line)
         if m:
             bullets.append((m.group(1), m.group(2), line))
         else:
@@ -267,7 +273,6 @@ def merge_short_bullets(text: str, max_words: int = 3, max_merge: int = 10) -> s
     if not text:
         return ""
 
-    bullet_re = re.compile(r'^(\s*[-*+]\s+)(.*)')
     lines = text.split('\n')
     result: List[str] = []
     short_bullets: List[str] = []
@@ -286,7 +291,7 @@ def merge_short_bullets(text: str, max_words: int = 3, max_merge: int = 10) -> s
         short_bullets.clear()
 
     for line in lines:
-        m = bullet_re.match(line)
+        m = _BULLET_RE.match(line)
         if m:
             content = m.group(2).strip()
             prefix = m.group(1)

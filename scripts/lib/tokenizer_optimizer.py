@@ -36,6 +36,12 @@ _BULLET_RE = re.compile(r'^(\s*)([-*+])\s+', re.MULTILINE)
 _MULTI_SPACE_RE = re.compile(r'  +')
 _LEADING_SPACES_RE = re.compile(r'^( {4,})', re.MULTILINE)
 
+# Redundant blank lines
+_BLANK_LINES_RE = re.compile(r'\n{3,}')
+
+# Bullet line for compact_bullets
+_COMPACT_BULLET_RE = re.compile(r'^(\s*[-*+])\s+(.*)')
+
 
 def strip_bold_italic(text: str) -> str:
     """Remove **bold** and *italic* markdown decorators."""
@@ -73,8 +79,7 @@ def minimize_whitespace(text: str) -> str:
     text = _MULTI_SPACE_RE.sub(' ', text)
     # Cap leading indentation at 4 spaces
     text = _LEADING_SPACES_RE.sub('    ', text)
-    # Collapse 3+ consecutive newlines to 2
-    text = re.sub(r'\n{3,}', '\n\n', text)
+    text = _BLANK_LINES_RE.sub('\n\n', text)
     return text
 
 
@@ -88,7 +93,6 @@ def compact_bullets(text: str) -> str:
     lines = text.split('\n')
     result: List[str] = []
     bullet_run: List[str] = []
-    bullet_re = re.compile(r'^(\s*[-*+])\s+(.*)')
 
     def flush():
         if len(bullet_run) >= 3:
@@ -102,7 +106,7 @@ def compact_bullets(text: str) -> str:
         bullet_run.clear()
 
     for line in lines:
-        m = bullet_re.match(line)
+        m = _COMPACT_BULLET_RE.match(line)
         if m:
             bullet_run.append(m.group(2))
         else:

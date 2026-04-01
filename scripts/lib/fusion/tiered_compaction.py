@@ -372,6 +372,8 @@ def compact(
             circuit_breaker.record_failure()
             stats["circuit_breaker"] = circuit_breaker.to_dict()
         stats["error"] = str(exc)
+        stats["tokens_after"] = stats.get("tokens_before", 0)
+        stats["tokens_saved"] = 0
         return messages, stats
 
 
