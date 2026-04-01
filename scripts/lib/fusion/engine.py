@@ -607,3 +607,61 @@ def _aggregate_stats(
         "total_timing_ms": round(timing_ms, 3),
         "message_count": message_count,
     }
+
+
+# ---------------------------------------------------------------------------
+# v8: Conversation-level compaction API
+# ---------------------------------------------------------------------------
+
+from claw_compactor.fusion.tiered_compaction import (
+    CompactionLevel,
+    CircuitBreaker,
+    FileAccessTracker,
+    compact as _tiered_compact,
+)
+
+# Re-export for convenience.
+FusionEngine.CompactionLevel = CompactionLevel  # type: ignore[attr-defined]
+
+
+def _compact_messages_method(
+    self,
+    messages: list[dict[str, Any]],
+    token_budget: int = 200_000,
+    level: CompactionLevel | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Apply tiered compaction to a message list.
+
+    Combines tool result budgeting, conversation summarization, and
+    per-message Fusion Pipeline compression based on context pressure.
+
+    Parameters
+    ----------
+    messages:
+        OpenAI-format message list.
+    token_budget:
+        Context window size in tokens.
+    level:
+        Force a specific compaction level. If None, auto-detected.
+
+    Returns
+    -------
+    (compacted_messages, stats)
+    """
+    if not hasattr(self, "_circuit_breaker"):
+        self._circuit_breaker = CircuitBreaker()
+    if not hasattr(self, "_file_tracker"):
+        self._file_tracker = FileAccessTracker()
+
+    return _tiered_compact(
+        messages=messages,
+        token_budget=token_budget,
+        circuit_breaker=self._circuit_breaker,
+        file_tracker=self._file_tracker,
+        fusion_engine=self,
+        level_override=level,
+    )
+
+
+# Monkey-patch onto FusionEngine (avoids modifying the class definition above).
+FusionEngine.compact_messages = _compact_messages_method  # type: ignore[attr-defined]

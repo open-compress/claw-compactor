@@ -35,3 +35,24 @@ __all__ = [
     "FusionResult",
     "FusionPipelineResult",
 ]
+
+# v8: Conversation-level compaction (inspired by Claude Code architecture)
+from claw_compactor.fusion.tool_result_budget import budget_tool_results
+from claw_compactor.fusion.conversation_summarizer import summarize_conversation
+from claw_compactor.fusion.tiered_compaction import (
+    CompactionLevel,
+    CircuitBreaker,
+    FileAccessTracker,
+    compact,
+    determine_level,
+)
+
+__all__ += [
+    "budget_tool_results",
+    "summarize_conversation",
+    "CompactionLevel",
+    "CircuitBreaker",
+    "FileAccessTracker",
+    "compact",
+    "determine_level",
+]
