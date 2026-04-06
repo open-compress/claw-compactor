@@ -191,9 +191,20 @@ class AbbrevStage(FusionStage):
 #  45   AbbrevStage     — ultra-abbreviation (text only)       [adapter]
 
 
-def _build_pipeline(rewind_store: RewindStore | None) -> FusionPipeline:
-    """Construct the full pipeline with every stage, in order."""
-    stages: list[FusionStage] = [
+def _build_pipeline(
+    rewind_store: RewindStore | None,
+    disabled_stages: set[str] | None = None,
+) -> FusionPipeline:
+    """Construct the full pipeline with every stage, in order.
+
+    Args:
+        rewind_store: Optional RewindStore for reversible compression.
+        disabled_stages: Set of stage names to skip entirely.  Stage names
+            match the ``name`` attribute on each FusionStage subclass, e.g.
+            ``{"semantic_dedup", "nexus", "abbrev"}``.
+    """
+    _disabled = disabled_stages or set()
+    all_stages: list[FusionStage] = [
         QuantumLock(),
         Cortex(),
         PhotonStage(),
@@ -209,6 +220,7 @@ def _build_pipeline(rewind_store: RewindStore | None) -> FusionPipeline:
         TokenOptStage(),
         AbbrevStage(),
     ]
+    stages = [s for s in all_stages if s.name not in _disabled]
     return FusionPipeline(stages)
 
 
@@ -227,18 +239,29 @@ class FusionEngine:
     aggressive:
         Reserved for future per-stage aggressiveness knob.  Currently all
         adapter stages run at maximum aggressiveness.  Default True.
+    disabled_stages:
+        Set of stage names to exclude from the pipeline.  Useful for
+        skipping stages that don't apply to your content or cause issues.
+        Stage names: ``quantum_lock``, ``cortex``, ``photon``, ``rle``,
+        ``semantic_dedup``, ``ionizer``, ``log_crunch``, ``search_crunch``,
+        ``diff_crunch``, ``structural_collapse``, ``neurosyntax``, ``nexus``,
+        ``token_opt``, ``abbrev``.
     """
 
     def __init__(
         self,
         enable_rewind: bool = True,
         aggressive: bool = True,
+        disabled_stages: set[str] | None = None,
     ) -> None:
         self._rewind_store: RewindStore | None = (
             RewindStore() if enable_rewind else None
         )
         self._aggressive = aggressive
-        self._pipeline: FusionPipeline = _build_pipeline(self._rewind_store)
+        self._disabled_stages = disabled_stages or set()
+        self._pipeline: FusionPipeline = _build_pipeline(
+            self._rewind_store, disabled_stages=self._disabled_stages
+        )
 
     # ------------------------------------------------------------------
     # Public API
