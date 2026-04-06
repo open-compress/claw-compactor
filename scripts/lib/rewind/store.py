@@ -29,6 +29,7 @@ class CacheEntry:
     stored_at: float
     original_tokens: int
     compressed_tokens: int
+    ttl_override: int | None = None
 
 
 class RewindStore:
@@ -40,7 +41,8 @@ class RewindStore:
         self.ttl_seconds = ttl_seconds
 
     def store(self, original: str, compressed: str,
-              original_tokens: int = 0, compressed_tokens: int = 0) -> str:
+              original_tokens: int = 0, compressed_tokens: int = 0,
+              ttl: int | None = None) -> str:
         """Store original text and return a 24-char hex hash ID."""
         hash_id = hashlib.sha256(original.encode("utf-8")).hexdigest()[:24]
         entry = CacheEntry(
@@ -49,6 +51,7 @@ class RewindStore:
             stored_at=time.monotonic(),
             original_tokens=original_tokens,
             compressed_tokens=compressed_tokens,
+            ttl_override=ttl,
         )
         # Move to end (most recently used)
         if hash_id in self._cache:
@@ -64,7 +67,8 @@ class RewindStore:
         entry = self._cache.get(hash_id)
         if entry is None:
             return None
-        if time.monotonic() - entry.stored_at > self.ttl_seconds:
+        effective_ttl = entry.ttl_override if entry.ttl_override is not None else self.ttl_seconds
+        if time.monotonic() - entry.stored_at > effective_ttl:
             del self._cache[hash_id]
             return None
         self._cache.move_to_end(hash_id)
