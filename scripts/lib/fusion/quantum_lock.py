@@ -194,6 +194,8 @@ def get_prefix_hash(content: str) -> str:
 # ---------------------------------------------------------------------------
 
 class QuantumLock(FusionStage):
+    _prefix_hashes: set = set()  # Track seen system prompt prefixes
+
     """KV cache alignment stage for the Fusion Pipeline.
 
     Runs at order=3 (before Cortex at order=5) so that every downstream
