@@ -221,6 +221,26 @@ def _compress_log(lines: list[str]) -> list[str]:
     return output
 
 
+
+
+def _is_jsonl_logs(text: str) -> bool:
+    """Detect if text is JSON-lines log format."""
+    import json as _json
+    lines = text.strip().split("\n")[:10]  # check first 10 lines
+    json_count = 0
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            obj = _json.loads(line)
+            if isinstance(obj, dict) and any(k in obj for k in ("level", "msg", "message", "severity", "ts", "timestamp")):
+                json_count += 1
+        except (ValueError, _json.JSONDecodeError):
+            pass
+    return json_count >= 3  # at least 3 JSONL log lines
+
+
 class LogCrunch(FusionStage):
     """Build/test log compression. Preserves errors, warnings and stack traces."""
 
@@ -231,6 +251,8 @@ class LogCrunch(FusionStage):
         self._normalise_timestamps = normalise_timestamps
 
     def should_apply(self, ctx: FusionContext) -> bool:
+        if _is_jsonl_logs(ctx.content):
+            return True
         return ctx.content_type == "log"
 
     def apply(self, ctx: FusionContext) -> FusionResult:
